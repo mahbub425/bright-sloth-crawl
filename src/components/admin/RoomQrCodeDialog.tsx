@@ -1,9 +1,9 @@
-import React from "react";
+import React, { useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import QRCode from "qrcode.react"; // Corrected to default import
-import { Copy } from "lucide-react";
+import { QRCode } from "qrcode.react"; // Corrected to named import
+import { Copy, Download } from "lucide-react";
 
 interface RoomQrCodeDialogProps {
   open: boolean;
@@ -14,6 +14,7 @@ interface RoomQrCodeDialogProps {
 
 const RoomQrCodeDialog: React.FC<RoomQrCodeDialogProps> = ({ open, onOpenChange, qrCodeUrl, roomName }) => {
   const { toast } = useToast();
+  const qrCodeRef = useRef<HTMLDivElement>(null);
 
   const handleCopyUrl = () => {
     navigator.clipboard.writeText(qrCodeUrl);
@@ -21,6 +22,25 @@ const RoomQrCodeDialog: React.FC<RoomQrCodeDialogProps> = ({ open, onOpenChange,
       title: "URL Copied!",
       description: "The QR code URL has been copied to your clipboard.",
     });
+  };
+
+  const handleDownloadQrCode = () => {
+    if (qrCodeRef.current) {
+      const canvas = qrCodeRef.current.querySelector("canvas");
+      if (canvas) {
+        const pngUrl = canvas.toDataURL("image/png");
+        const downloadLink = document.createElement("a");
+        downloadLink.href = pngUrl;
+        downloadLink.download = `${roomName.replace(/\s/g, '_')}_QR_Code.png`;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        toast({
+          title: "QR Code Downloaded",
+          description: "The QR code image has been downloaded.",
+        });
+      }
+    }
   };
 
   return (
@@ -31,7 +51,7 @@ const RoomQrCodeDialog: React.FC<RoomQrCodeDialogProps> = ({ open, onOpenChange,
         </DialogHeader>
         <div className="flex flex-col items-center justify-center p-4">
           {qrCodeUrl ? (
-            <div className="p-2 border border-gray-200 dark:border-gray-700 rounded-md">
+            <div ref={qrCodeRef} className="p-2 border border-gray-200 dark:border-gray-700 rounded-md">
               <QRCode value={qrCodeUrl} size={256} level="H" />
             </div>
           ) : (
@@ -42,6 +62,9 @@ const RoomQrCodeDialog: React.FC<RoomQrCodeDialogProps> = ({ open, onOpenChange,
         <DialogFooter className="flex flex-col sm:flex-row sm:justify-center sm:space-x-2 pt-4">
           <Button variant="outline" onClick={handleCopyUrl} className="w-full sm:w-auto mb-2 sm:mb-0">
             <Copy className="h-4 w-4 mr-2" /> Copy URL
+          </Button>
+          <Button onClick={handleDownloadQrCode} className="w-full sm:w-auto">
+            <Download className="h-4 w-4 mr-2" /> Download QR
           </Button>
         </DialogFooter>
       </DialogContent>
