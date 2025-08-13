@@ -22,10 +22,11 @@ export interface Booking {
   remarks: string | null;
   created_at: string;
   updated_at: string;
-  // Optionally, add user details if joined
+  // Optionally, add user and room details if joined
   user_name?: string;
   user_pin?: string;
   user_department?: string;
+  room_name?: string; // Added for BookingList display
 }
 
 export interface UserProfile {

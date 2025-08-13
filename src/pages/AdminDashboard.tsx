@@ -12,10 +12,9 @@ import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Room, AdminPreference } from "@/types/database";
 import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
-import UserManagement from "@/components/admin/UserManagement"; // Import UserManagement
-import { DateRange } from "react-day-picker"; // Import DateRange type
-// import BookingList from "@/components/admin/BookingList"; // To be created
-// import RoomManagement from "@/components/admin/RoomManagement"; // To be created
+import UserManagement from "@/components/admin/UserManagement";
+import BookingList from "@/components/admin/BookingList"; // Import BookingList
+import { DateRange } from "react-day-picker";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -26,7 +25,7 @@ const AdminDashboard = () => {
 
   // Filter states for Analytics
   const [filterRoomId, setFilterRoomId] = useState<string | null>(null);
-  const [filterDateRange, setFilterDateRange] = useState<DateRange>({ // Using DateRange type
+  const [filterDateRange, setFilterDateRange] = useState<DateRange>({
     from: subMonths(new Date(), 6),
     to: new Date(),
   });
@@ -214,9 +213,7 @@ const AdminDashboard = () => {
             <UserManagement />
           )}
           {activeTab === "bookings" && (
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md min-h-[400px] flex items-center justify-center">
-              <p className="text-gray-500 dark:text-gray-400">Booking List section will be here.</p>
-            </div>
+            <BookingList /> /* Render the new BookingList component */
           )}
           {activeTab === "rooms" && (
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md min-h-[400px] flex items-center justify-center">
