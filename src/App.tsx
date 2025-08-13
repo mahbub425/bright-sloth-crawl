@@ -11,7 +11,6 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
-import RoomDetails from "./pages/RoomDetails"; // New import
 import { SessionProvider } from "./components/SessionProvider";
 
 const queryClient = new QueryClient();
@@ -30,7 +29,6 @@ const App = () => (
             <Route path="/reset-password" element={<ResetPassword />} /> {/* Supabase redirects here */}
             <Route path="/admin" element={<AdminLogin />} />
             <Route path="/admin-dashboard" element={<AdminDashboard />} />
-            <Route path="/room/:roomId" element={<RoomDetails />} /> {/* New route for QR code scans */}
             <Route path="/" element={<UserDashboard />} /> {/* Updated to UserDashboard */}
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
