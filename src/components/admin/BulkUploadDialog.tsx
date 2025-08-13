@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { UploadCloud, FileText, XCircle, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/auth";
 import { useToast } from "@/components/ui/use-toast";
-import { parse } from 'csv-parse/sync'; // Changed import path to 'csv-parse/sync'
+import { parse } from 'csv-parse/sync'; // Correct import path
 
 interface BulkUploadDialogProps {
   open: boolean;
