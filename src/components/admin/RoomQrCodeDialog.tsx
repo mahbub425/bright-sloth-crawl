@@ -2,7 +2,7 @@ import React, { useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import QRCode from "qrcode.react"; // Changed to default import
+import { QRCode } from "qrcode.react"; // Changed to named import
 import { Copy, Download } from "lucide-react";
 
 interface RoomQrCodeDialogProps {
