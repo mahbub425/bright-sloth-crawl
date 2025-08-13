@@ -158,76 +158,78 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      {/* Left Sidebar Menu */}
-      <div className="w-64 bg-white dark:bg-gray-800 shadow-md p-4 flex flex-col">
-        <h2 className="text-2xl font-bold mb-6 text-center">Admin Panel</h2>
-        <nav className="flex-1 space-y-2">
-          <Button
-            variant={activeTab === "analytics" ? "secondary" : "ghost"}
-            className="w-full justify-start"
-            onClick={() => setActiveTab("analytics")}
-          >
-            <BarChart3 className="mr-2 h-4 w-4" /> Analytics
-          </Button>
-          <Button
-            variant={activeTab === "users" ? "secondary" : "ghost"}
-            className="w-full justify-start"
-            onClick={() => setActiveTab("users")}
-          >
-            <Users className="mr-2 h-4 w-4" /> User Management
-          </Button>
-          <Button
-            variant={activeTab === "bookings" ? "secondary" : "ghost"}
-            className="w-full justify-start"
-            onClick={() => setActiveTab("bookings")}
-          >
-            <ListChecks className="mr-2 h-4 w-4" /> Booking List
-          </Button>
-          <Button
-            variant={activeTab === "rooms" ? "secondary" : "ghost"}
-            className="w-full justify-start"
-            onClick={() => setActiveTab("rooms")}
-          >
-            <Home className="mr-2 h-4 w-4" /> Manage Room
-          </Button>
-        </nav>
-        <div className="mt-auto pt-4 border-t dark:border-gray-700">
-          <Button onClick={handleAdminLogout} className="w-full bg-red-600 hover:bg-red-700">
-            Logout Admin
-          </Button>
+    <div className="flex flex-col h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+      <div className="flex flex-1"> {/* New wrapper div for sidebar and main content */}
+        {/* Left Sidebar Menu */}
+        <div className="w-64 bg-white dark:bg-gray-800 shadow-md p-4 flex flex-col">
+          <h2 className="text-2xl font-bold mb-6 text-center">Admin Panel</h2>
+          <nav className="flex-1 space-y-2">
+            <Button
+              variant={activeTab === "analytics" ? "secondary" : "ghost"}
+              className="w-full justify-start"
+              onClick={() => setActiveTab("analytics")}
+            >
+              <BarChart3 className="mr-2 h-4 w-4" /> Analytics
+            </Button>
+            <Button
+              variant={activeTab === "users" ? "secondary" : "ghost"}
+              className="w-full justify-start"
+              onClick={() => setActiveTab("users")}
+            >
+              <Users className="mr-2 h-4 w-4" /> User Management
+            </Button>
+            <Button
+              variant={activeTab === "bookings" ? "secondary" : "ghost"}
+              className="w-full justify-start"
+              onClick={() => setActiveTab("bookings")}
+            >
+              <ListChecks className="mr-2 h-4 w-4" /> Booking List
+            </Button>
+            <Button
+              variant={activeTab === "rooms" ? "secondary" : "ghost"}
+              className="w-full justify-start"
+              onClick={() => setActiveTab("rooms")}
+            >
+              <Home className="mr-2 h-4 w-4" /> Manage Room
+            </Button>
+          </nav>
+          <div className="mt-auto pt-4 border-t dark:border-gray-700">
+            <Button onClick={handleAdminLogout} className="w-full bg-red-600 hover:bg-red-700">
+              Logout Admin
+            </Button>
+          </div>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="flex-1 p-6 overflow-auto">
+          {activeTab === "analytics" && (
+            <AnalyticsDashboard
+              filterRoomId={filterRoomId}
+              setFilterRoomId={setFilterRoomId}
+              filterDateRange={filterDateRange}
+              setFilterDateRange={setFilterDateRange}
+              rooms={rooms}
+              saveAdminPreference={saveAdminPreference}
+            />
+          )}
+          {activeTab === "users" && (
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md min-h-[400px] flex items-center justify-center">
+              <p className="text-gray-500 dark:text-gray-400">User Management section will be here.</p>
+            </div>
+          )}
+          {activeTab === "bookings" && (
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md min-h-[400px] flex items-center justify-center">
+              <p className="text-gray-500 dark:text-gray-400">Booking List section will be here.</p>
+            </div>
+          )}
+          {activeTab === "rooms" && (
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md min-h-[400px] flex items-center justify-center">
+              <p className="text-gray-500 dark:text-gray-400">Room Management section will be here.</p>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Main Content Area */}
-      <div className="flex-1 p-6 overflow-auto">
-        {activeTab === "analytics" && (
-          <AnalyticsDashboard
-            filterRoomId={filterRoomId}
-            setFilterRoomId={setFilterRoomId}
-            filterDateRange={filterDateRange}
-            setFilterDateRange={setFilterDateRange}
-            rooms={rooms}
-            saveAdminPreference={saveAdminPreference}
-          />
-        )}
-        {activeTab === "users" && (
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md min-h-[400px] flex items-center justify-center">
-            <p className="text-gray-500 dark:text-gray-400">User Management section will be here.</p>
-          </div>
-        )}
-        {activeTab === "bookings" && (
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md min-h-[400px] flex items-center justify-center">
-            <p className="text-gray-500 dark:text-gray-400">Booking List section will be here.</p>
-          </div>
-        )}
-        {activeTab === "rooms" && (
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md min-h-[400px] flex items-center justify-center">
-            <p className="text-gray-500 dark:text-gray-400">Room Management section will be here.</p>
-          </div>
-        )}
-      </div>
-      <MadeWithDyad />
+      <MadeWithDyad /> {/* Moved outside the flex-1 content div */}
     </div>
   );
 };
