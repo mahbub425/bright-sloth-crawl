@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format, parseISO, isBefore, isAfter, addMinutes, isSameDay } from "date-fns";
+import { format, parseISO, isBefore, isAfter, addMinutes, isSameDay } from "date-fns"; // Added isSameDay import
 import { CalendarIcon, Clock, Text, Repeat, Info } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Room, Booking } from "@/types/database";
@@ -72,7 +72,7 @@ interface BookingFormDialogProps {
   userId: string;
 }
 
-export const generateTimeOptions = (roomAvailableStart?: string, roomAvailableEnd?: string) => {
+const generateTimeOptions = (roomAvailableStart?: string, roomAvailableEnd?: string) => {
   const options = [];
   const defaultStart = "00:00";
   const defaultEnd = "23:59";
