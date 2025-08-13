@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { supabase } from "@/integrations/supabase/auth";
 import { useToast } from "@/components/ui/use-toast";
-import { CalendarIcon, Users, ListChecks, BarChart3 } from "lucide-react";
+import { CalendarIcon, Users, ListChecks, BarChart3, Home } from "lucide-react"; // Added Home icon
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format, subMonths } from "date-fns";
@@ -14,6 +14,7 @@ import { Room, AdminPreference } from "@/types/database";
 import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
 import UserManagement from "@/components/admin/UserManagement";
 import BookingList from "@/components/admin/BookingList";
+import RoomManagement from "@/components/admin/RoomManagement"; // New import
 import { DateRange } from "react-day-picker";
 
 const AdminDashboard = () => {
@@ -182,6 +183,13 @@ const AdminDashboard = () => {
             >
               <ListChecks className="mr-2 h-4 w-4" /> Booking List
             </Button>
+            <Button
+              variant={activeTab === "rooms" ? "secondary" : "ghost"} // New button for Room Management
+              className="w-full justify-start"
+              onClick={() => setActiveTab("rooms")}
+            >
+              <Home className="mr-2 h-4 w-4" /> Manage Rooms
+            </Button>
           </nav>
           <div className="mt-auto pt-4 border-t dark:border-gray-700">
             <Button onClick={handleAdminLogout} className="w-full bg-red-600 hover:bg-red-700">
@@ -207,6 +215,9 @@ const AdminDashboard = () => {
           )}
           {activeTab === "bookings" && (
             <BookingList />
+          )}
+          {activeTab === "rooms" && ( // Render RoomManagement component
+            <RoomManagement />
           )}
         </div>
       </div>
