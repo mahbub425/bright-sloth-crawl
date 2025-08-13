@@ -7,13 +7,13 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { Room } from "@/types/database";
-import { DateRange } from "react-day-picker"; // Explicitly import DateRange
+import { DateRange } from "react-day-picker"; // Import DateRange type
 
 interface AnalyticsFiltersProps {
   filterRoomId: string | null;
   setFilterRoomId: (id: string | null) => void;
-  filterDateRange: DateRange; // Use DateRange type here
-  setFilterDateRange: (range: DateRange | undefined) => void; // Allow undefined for onSelect
+  filterDateRange: DateRange; // Using DateRange type
+  setFilterDateRange: (range: DateRange | undefined) => void; // Using DateRange type
   rooms: Room[];
   onApplyFilters: () => void;
   onSavePreferences: () => void;
@@ -65,11 +65,11 @@ const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
               variant={"outline"}
               className={cn(
                 "w-[280px] justify-start text-left font-normal",
-                !filterDateRange?.from && "text-muted-foreground" // Use optional chaining
+                !filterDateRange?.from && "text-muted-foreground"
               )}
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
-              {filterDateRange?.from ? ( // Use optional chaining
+              {filterDateRange?.from ? (
                 filterDateRange.to ? (
                   <>
                     {format(filterDateRange.from, "LLL dd, y")} -{" "}

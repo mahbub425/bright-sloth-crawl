@@ -7,13 +7,13 @@ import AnalyticsCards from "./AnalyticsCards";
 import BookingsByRoomChart from "./BookingsByRoomChart";
 import DailyBookingGrowthChart from "./DailyBookingGrowthChart";
 import { format } from "date-fns";
-import { DateRange } from "react-day-picker"; // Import DateRange
+import { DateRange } from "react-day-picker"; // Import DateRange type
 
 interface AnalyticsDashboardProps {
   filterRoomId: string | null;
   setFilterRoomId: (id: string | null) => void;
-  filterDateRange: DateRange; // Use DateRange type
-  setFilterDateRange: (range: DateRange | undefined) => void; // Use DateRange type
+  filterDateRange: DateRange; // Using DateRange type
+  setFilterDateRange: (range: DateRange | undefined) => void; // Using DateRange type
   rooms: Room[];
   saveAdminPreference: () => void;
 }

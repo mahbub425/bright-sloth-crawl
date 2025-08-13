@@ -11,9 +11,9 @@ import { format, subMonths } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Room, AdminPreference } from "@/types/database";
-import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard"; // New component
+import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
+import UserManagement from "@/components/admin/UserManagement"; // Import UserManagement
 import { DateRange } from "react-day-picker"; // Import DateRange type
-// import UserManagement from "@/components/admin/UserManagement"; // To be created
 // import BookingList from "@/components/admin/BookingList"; // To be created
 // import RoomManagement from "@/components/admin/RoomManagement"; // To be created
 
@@ -26,7 +26,7 @@ const AdminDashboard = () => {
 
   // Filter states for Analytics
   const [filterRoomId, setFilterRoomId] = useState<string | null>(null);
-  const [filterDateRange, setFilterDateRange] = useState<DateRange>({ // Changed type to DateRange
+  const [filterDateRange, setFilterDateRange] = useState<DateRange>({ // Using DateRange type
     from: subMonths(new Date(), 6),
     to: new Date(),
   });
@@ -56,9 +56,6 @@ const AdminDashboard = () => {
   }, [adminSession]);
 
   const fetchAdminPreferences = async (adminUsername: string) => {
-    // In a real app, admin_id would be from auth.users.id, but for this custom admin,
-    // we'll use a placeholder or derive it if needed.
-    // Let's fetch the admin's actual user ID from profiles table if they exist as an admin user.
     const { data: adminProfile, error: profileError } = await supabase
       .from('profiles')
       .select('id')
@@ -115,7 +112,7 @@ const AdminDashboard = () => {
   const fetchRooms = async () => {
     const { data, error } = await supabase
       .from('rooms')
-      .select('*') // Changed to select all columns
+      .select('*')
       .eq('status', 'enabled');
 
     if (error) {
@@ -160,7 +157,7 @@ const AdminDashboard = () => {
 
   return (
     <div className="flex flex-col h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      <div className="flex flex-1"> {/* New wrapper div for sidebar and main content */}
+      <div className="flex flex-1">
         {/* Left Sidebar Menu */}
         <div className="w-64 bg-white dark:bg-gray-800 shadow-md p-4 flex flex-col">
           <h2 className="text-2xl font-bold mb-6 text-center">Admin Panel</h2>
@@ -214,9 +211,7 @@ const AdminDashboard = () => {
             />
           )}
           {activeTab === "users" && (
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md min-h-[400px] flex items-center justify-center">
-              <p className="text-gray-500 dark:text-gray-400">User Management section will be here.</p>
-            </div>
+            <UserManagement />
           )}
           {activeTab === "bookings" && (
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md min-h-[400px] flex items-center justify-center">
