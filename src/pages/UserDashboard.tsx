@@ -8,7 +8,7 @@ import { Calendar as CalendarIcon, Share2, HelpCircle, User as UserIcon } from "
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
+import { format, startOfWeek, addDays } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import ProfileView from "@/components/ProfileView";
@@ -17,6 +17,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import RoomList from "@/components/RoomList";
 import DailyScheduleGrid from "@/components/DailyScheduleGrid";
+import WeeklyScheduleGrid from "@/components/WeeklyScheduleGrid"; // New import
+import WeeklyRoomDetailsDialog from "@/components/WeeklyRoomDetailsDialog"; // New import
 import { Room, Booking, UserPreference } from "@/types/database"; // Import types
 import BookingFormDialog from "@/components/BookingFormDialog"; // Import BookingFormDialog
 import BookingDetailsDialog from "@/components/BookingDetailsDialog"; // Import BookingDetailsDialog
@@ -38,6 +40,10 @@ const UserDashboard = () => {
   const [viewingBooking, setViewingBooking] = useState<Booking | null>(null);
   const [bookingDetailsOpen, setBookingDetailsOpen] = useState(false);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null); // State for editing
+  const [weeklyRoomDetailsOpen, setWeeklyRoomDetailsOpen] = useState(false); // State for weekly room details dialog
+  const [selectedRoomForWeeklyDetails, setSelectedRoomForWeeklyDetails] = useState<Room | null>(null);
+  const [selectedDateForWeeklyDetails, setSelectedDateForWeeklyDetails] = useState<Date | undefined>(undefined);
+
 
   useEffect(() => {
     if (session) {
@@ -49,9 +55,9 @@ const UserDashboard = () => {
 
   useEffect(() => {
     if (selectedDate) {
-      fetchBookings(selectedDate);
+      fetchBookings(selectedDate, layout);
     }
-  }, [selectedDate, session]);
+  }, [selectedDate, layout, session]); // Re-fetch bookings when layout changes
 
   const fetchUserProfile = async () => {
     if (!session?.user?.id) return;
@@ -118,9 +124,8 @@ const UserDashboard = () => {
     }
   };
 
-  const fetchBookings = async (date: Date) => {
-    const formattedDate = format(date, "yyyy-MM-dd");
-    const { data, error } = await supabase
+  const fetchBookings = async (date: Date, currentLayout: "daily" | "weekly") => {
+    let query = supabase
       .from('bookings')
       .select(`
         *,
@@ -129,8 +134,20 @@ const UserDashboard = () => {
           pin,
           department
         )
-      `)
-      .eq('date', formattedDate);
+      `);
+
+    if (currentLayout === "daily") {
+      const formattedDate = format(date, "yyyy-MM-dd");
+      query = query.eq('date', formattedDate);
+    } else { // Weekly layout
+      const startOfCurrentWeek = startOfWeek(date, { weekStartsOn: 0 }); // Sunday as start of week
+      const endOfCurrentWeek = addDays(startOfCurrentWeek, 6);
+      query = query
+        .gte('date', format(startOfCurrentWeek, "yyyy-MM-dd"))
+        .lte('date', format(endOfCurrentWeek, "yyyy-MM-dd"));
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       toast({
@@ -178,6 +195,7 @@ const UserDashboard = () => {
       setSelectedRoomForBooking(room);
       setEditingBooking(null); // Ensure we are in create mode
       setBookingFormOpen(true);
+      setSelectedDate(date); // Ensure the form opens with the correct date
     }
   };
 
@@ -194,7 +212,13 @@ const UserDashboard = () => {
   };
 
   const handleBookingOperationSuccess = () => {
-    fetchBookings(selectedDate || new Date()); // Refresh bookings for the current date
+    fetchBookings(selectedDate || new Date(), layout); // Refresh bookings for the current date/week
+  };
+
+  const handleViewRoomDetailsForWeekly = (room: Room, date: Date) => {
+    setSelectedRoomForWeeklyDetails(room);
+    setSelectedDateForWeeklyDetails(date);
+    setWeeklyRoomDetailsOpen(true);
   };
 
   if (isLoading) {
@@ -294,11 +318,12 @@ const UserDashboard = () => {
               onViewBooking={handleViewBooking}
             />
           ) : (
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md min-h-[400px] flex items-center justify-center">
-              <p className="text-gray-500 dark:text-gray-400">
-                Weekly schedule view will be here.
-              </p>
-            </div>
+            <WeeklyScheduleGrid
+              rooms={rooms}
+              bookings={bookings}
+              selectedDate={selectedDate || new Date()}
+              onViewRoomDetails={handleViewRoomDetailsForWeekly}
+            />
           )}
         </div>
       </div>
@@ -346,6 +371,17 @@ const UserDashboard = () => {
           booking={viewingBooking}
           onEdit={handleEditBooking}
           onDeleteSuccess={handleBookingOperationSuccess}
+        />
+      )}
+
+      {/* Weekly Room Details Dialog */}
+      {weeklyRoomDetailsOpen && selectedRoomForWeeklyDetails && selectedDateForWeeklyDetails && (
+        <WeeklyRoomDetailsDialog
+          open={weeklyRoomDetailsOpen}
+          onOpenChange={setWeeklyRoomDetailsOpen}
+          room={selectedRoomForWeeklyDetails}
+          initialDate={selectedDateForWeeklyDetails}
+          onBookSlot={handleBookSlot}
         />
       )}
 

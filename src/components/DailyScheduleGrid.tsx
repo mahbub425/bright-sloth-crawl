@@ -91,7 +91,7 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
         </div>
 
         {/* Main Grid */}
-        <div className="grid grid-rows-1 auto-rows-min overflow-x-auto">
+        <div className="grid grid-flow-col auto-cols-[80px] overflow-x-auto">
           <div className="grid grid-flow-col auto-cols-[80px] border-b border-gray-200 dark:border-gray-700">
             {allTimeSlots.map((slot) => (
               <div
@@ -107,13 +107,13 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
             <div key={room.id} className="grid grid-flow-col auto-cols-[80px]">
               {allTimeSlots.map((slot) => {
                 const booked = isSlotBooked(room.id, slot);
+                const bookingInSlot = getBookingsForRoomAndSlot(room.id, slot)[0];
                 const cellClasses = cn(
                   "h-12 flex items-center justify-center p-1 border-r border-b border-gray-200 dark:border-gray-700 last:border-r-0",
                   booked
                     ? "bg-blue-100 dark:bg-blue-900/30 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-900/50"
                     : "bg-gray-50 dark:bg-gray-700/20 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/40"
                 );
-                const bookingInSlot = getBookingsForRoomAndSlot(room.id, slot)[0];
 
                 return (
                   <div
@@ -126,7 +126,7 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
                         {bookingInSlot.title}
                         <br />
                         <span className="text-[10px] opacity-80">
-                          {format(parseISO(`2000-01-01T${bookingInSlot.start_time}`), "h:mma")} - {format(parseISO(`2000-01-01T${bookingInSlot.end_time}`), "h:mma")}
+                          {bookingInSlot.user_name} ({bookingInSlot.user_pin})
                         </span>
                       </span>
                     ) : (

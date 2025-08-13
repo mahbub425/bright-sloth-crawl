@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Room, AdminPreference } from "@/types/database";
 import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard"; // New component
+import { DateRange } from "react-day-picker"; // Import DateRange type
 // import UserManagement from "@/components/admin/UserManagement"; // To be created
 // import BookingList from "@/components/admin/BookingList"; // To be created
 // import RoomManagement from "@/components/admin/RoomManagement"; // To be created
@@ -25,7 +26,7 @@ const AdminDashboard = () => {
 
   // Filter states for Analytics
   const [filterRoomId, setFilterRoomId] = useState<string | null>(null);
-  const [filterDateRange, setFilterDateRange] = useState<{ from?: Date; to?: Date }>({
+  const [filterDateRange, setFilterDateRange] = useState<DateRange>({ // Changed type to DateRange
     from: subMonths(new Date(), 6),
     to: new Date(),
   });
@@ -229,7 +230,7 @@ const AdminDashboard = () => {
           )}
         </div>
       </div>
-      <MadeWithDyad /> {/* Moved outside the flex-1 content div */}
+      <MadeWithDyad />
     </div>
   );
 };

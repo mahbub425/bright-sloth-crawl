@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format, parseISO, isBefore, isAfter, addMinutes, startOfDay, endOfDay } from "date-fns";
+import { format, parseISO, isBefore, isAfter, addMinutes, isSameDay } from "date-fns"; // Added isSameDay import
 import { CalendarIcon, Clock, Text, Repeat, Info } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Room, Booking } from "@/types/database";
@@ -72,19 +72,26 @@ interface BookingFormDialogProps {
   userId: string;
 }
 
-const generateTimeOptions = () => {
+const generateTimeOptions = (roomAvailableStart?: string, roomAvailableEnd?: string) => {
   const options = [];
-  for (let i = 0; i < 24; i++) {
-    for (let j = 0; j < 60; j += 30) {
-      const hour = String(i).padStart(2, '0');
-      const minute = String(j).padStart(2, '0');
-      options.push(`${hour}:${minute}`);
-    }
+  const defaultStart = "00:00";
+  const defaultEnd = "23:59";
+
+  const startHour = parseInt((roomAvailableStart || defaultStart).substring(0, 2));
+  const startMinute = parseInt((roomAvailableStart || defaultStart).substring(3, 5));
+  const endHour = parseInt((roomAvailableEnd || defaultEnd).substring(0, 2));
+  const endMinute = parseInt((roomAvailableEnd || defaultEnd).substring(3, 5));
+
+  let currentTime = parseISO(`2000-01-01T${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}:00`);
+  const endTime = parseISO(`2000-01-01T${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}:00`);
+
+  while (isBefore(currentTime, endTime) || isSameDay(currentTime, endTime)) { // Include end time if it's on a 30-min mark
+    options.push(format(currentTime, "HH:mm"));
+    currentTime = addMinutes(currentTime, 30);
   }
   return options;
 };
 
-const timeOptions = generateTimeOptions();
 
 const BookingFormDialog: React.FC<BookingFormDialogProps> = ({
   open,
@@ -99,6 +106,7 @@ const BookingFormDialog: React.FC<BookingFormDialogProps> = ({
 }) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [timeOptions, setTimeOptions] = useState<string[]>([]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -111,6 +119,14 @@ const BookingFormDialog: React.FC<BookingFormDialogProps> = ({
       remarks: "",
     },
   });
+
+  useEffect(() => {
+    if (room) {
+      setTimeOptions(generateTimeOptions(room.available_time?.start, room.available_time?.end));
+    } else {
+      setTimeOptions(generateTimeOptions()); // Default full day if no room selected
+    }
+  }, [room]);
 
   useEffect(() => {
     if (open && room) {
@@ -146,8 +162,24 @@ const BookingFormDialog: React.FC<BookingFormDialogProps> = ({
     setIsSubmitting(true);
 
     const formattedDate = format(values.date, "yyyy-MM-dd");
-    const startDateTime = `${formattedDate}T${values.startTime}:00`;
-    const endDateTime = `${formattedDate}T${values.endTime}:00`;
+    const startDateTime = parseISO(`${formattedDate}T${values.startTime}:00`);
+    const endDateTime = parseISO(`${formattedDate}T${values.endTime}:00`);
+
+    // Validate against room's available time
+    if (room.available_time) {
+      const roomStart = parseISO(`2000-01-01T${room.available_time.start}:00`);
+      const roomEnd = parseISO(`2000-01-01T${room.available_time.end}:00`);
+
+      if (isBefore(startDateTime, roomStart) || isAfter(endDateTime, roomEnd)) {
+        toast({
+          title: "Booking Error",
+          description: `Booking must be within room's available hours: ${room.available_time.start} - ${room.available_time.end}.`,
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+    }
 
     try {
       // Check for overlapping bookings
