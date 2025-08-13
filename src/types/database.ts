@@ -7,6 +7,7 @@ export interface Room {
   available_time: { start: string; end: string } | null;
   image: string | null;
   status: 'enabled' | 'disabled';
+  qr_code: string | null; // Added for QR code URL
   created_at: string;
   updated_at: string;
 }

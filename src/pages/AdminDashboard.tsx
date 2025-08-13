@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Room, AdminPreference } from "@/types/database";
 import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
 import UserManagement from "@/components/admin/UserManagement";
-import BookingList from "@/components/admin/BookingList"; // Import BookingList
+import BookingList from "@/components/admin/BookingList";
+import RoomManagement from "@/components/admin/RoomManagement"; // New import
 import { DateRange } from "react-day-picker";
 
 const AdminDashboard = () => {
@@ -213,12 +214,10 @@ const AdminDashboard = () => {
             <UserManagement />
           )}
           {activeTab === "bookings" && (
-            <BookingList /> /* Render the new BookingList component */
+            <BookingList />
           )}
           {activeTab === "rooms" && (
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md min-h-[400px] flex items-center justify-center">
-              <p className="text-gray-500 dark:text-gray-400">Room Management section will be here.</p>
-            </div>
+            <RoomManagement /> {/* Render the new RoomManagement component */}
           )}
         </div>
       </div>
