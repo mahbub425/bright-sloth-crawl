@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { UploadCloud, FileText, XCircle, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/auth";
 import { useToast } from "@/components/ui/use-toast";
-import { parse } from 'csv-parse/sync'; // Correct import path
+import { parse } from 'csv-parse/browser/esm/sync'; // Corrected import path for browser ESM synchronous parser
 
 interface BulkUploadDialogProps {
   open: boolean;
@@ -44,7 +44,7 @@ const BulkUploadDialog: React.FC<BulkUploadDialogProps> = ({ open, onOpenChange,
 
     try {
       const text = await file.text();
-      const records = parse(text, {
+      const records: any[] = parse(text, { // Explicitly type records as any[]
         columns: true,
         skip_empty_lines: true,
         trim: true,
