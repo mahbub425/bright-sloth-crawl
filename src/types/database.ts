@@ -48,3 +48,12 @@ export interface UserPreference {
   layout: 'daily' | 'weekly';
   updated_at: string;
 }
+
+export interface AdminPreference {
+  id: string;
+  admin_id: string;
+  filter_room_id: string | null;
+  filter_date_start: string | null;
+  filter_date_end: string | null;
+  updated_at: string;
+}
