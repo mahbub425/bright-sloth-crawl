@@ -1,0 +1,115 @@
+import React, { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { supabase } from "@/integrations/supabase/auth";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/use-toast";
+import { MadeWithDyad } from "@/components/made-with-dyad";
+
+const formSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required"),
+});
+
+const AdminLogin = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      username: "",
+      password: "",
+    },
+  });
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setIsSubmitting(true);
+    try {
+      // Fetch admin credentials from the 'admins' table
+      const { data, error } = await supabase
+        .from('admins')
+        .select('username, password')
+        .eq('username', values.username)
+        .single();
+
+      if (error || !data) {
+        toast({
+          title: "Login Error",
+          description: "Invalid username or password.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // IMPORTANT SECURITY WARNING:
+      // In a real application, you MUST use a server-side bcrypt comparison here
+      // (e.g., via a Supabase Edge Function) to verify the password hash.
+      // Comparing plaintext passwords or using a client-side bcrypt library is INSECURE.
+      // This direct comparison is for demonstration purposes ONLY.
+      if (values.password === "123456" && values.username === "admin") { // Simulating the hardcoded check
+        // For a real app, you'd verify against the hashed password from 'data.password'
+        // e.g., await bcrypt.compare(values.password, data.password)
+        
+        // Simulate admin session (no actual Supabase auth session for this custom admin)
+        localStorage.setItem('admin_session', JSON.stringify({ username: values.username, role: 'admin', expires_at: Date.now() + 3600 * 1000 })); // 1 hour expiry
+
+        toast({
+          title: "Login Successful",
+          description: "Welcome, Super Admin!",
+        });
+        navigate("/admin-dashboard");
+      } else {
+        toast({
+          title: "Login Error",
+          description: "Invalid username or password.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Login Error",
+        description: error.message || "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-900 p-4">
+      <div className="w-full max-w-md bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md">
+        <h2 className="text-2xl font-bold text-center mb-2 text-gray-900 dark:text-gray-100">Admin Login</h2>
+        <p className="text-center text-gray-600 dark:text-gray-400 mb-6">Enter your admin credentials.</p>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <div>
+            <Label htmlFor="username">Username</Label>
+            <Input id="username" placeholder="admin" type="text" {...form.register("username")} />
+            {form.formState.errors.username && (
+              <p className="text-red-500 text-sm mt-1">{form.formState.errors.username.message}</p>
+            )}
+          </div>
+          <div>
+            <Label htmlFor="password">Password</Label>
+            <Input id="password" placeholder="123456" type="password" {...form.register("password")} />
+            {form.formState.errors.password && (
+              <p className="text-red-500 text-sm mt-1">{form.formState.errors.password.message}</p>
+            )}
+          </div>
+          <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white" disabled={isSubmitting}>
+            {isSubmitting ? "Logging in..." : "Log in as Admin"}
+          </Button>
+        </form>
+      </div>
+      <MadeWithDyad />
+    </div>
+  );
+};
+
+export default AdminLogin;

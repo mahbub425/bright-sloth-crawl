@@ -37,7 +37,7 @@ const Login = () => {
       // First, find the user's email using the provided PIN
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('email')
+        .select('email, status')
         .eq('pin', values.pin)
         .single();
 
@@ -45,6 +45,16 @@ const Login = () => {
         toast({
           title: "Login Error",
           description: "Invalid PIN or password.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (profileData.status === 'blocked') {
+        toast({
+          title: "Login Error",
+          description: "You are blocked by admin. You can’t login now.",
           variant: "destructive",
         });
         setIsSubmitting(false);

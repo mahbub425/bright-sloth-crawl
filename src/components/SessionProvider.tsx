@@ -6,6 +6,7 @@ import { MadeWithDyad } from "@/components/made-with-dyad";
 
 interface SessionContextType {
   session: Session | null;
+  isAdmin: boolean;
   isLoading: boolean;
 }
 
@@ -13,48 +14,86 @@ const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
 export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+    const handleAuthStateChange = async (_event: string, currentSession: Session | null) => {
       setSession(currentSession);
+
+      let userRole = 'user'; // Default role
+      if (currentSession) {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', currentSession.user.id)
+          .single();
+
+        if (profile && !error) {
+          userRole = profile.role;
+        }
+      }
+
+      // Check for custom admin session (for the hardcoded admin)
+      const storedAdminSession = localStorage.getItem('admin_session');
+      let currentIsAdmin = false;
+      if (storedAdminSession) {
+        const adminSessionData = JSON.parse(storedAdminSession);
+        if (adminSessionData.expires_at > Date.now() && adminSessionData.role === 'admin') {
+          currentIsAdmin = true;
+        } else {
+          localStorage.removeItem('admin_session'); // Clear expired admin session
+        }
+      }
+      setIsAdmin(currentIsAdmin || userRole === 'admin'); // Admin if either custom admin or user with 'admin' role
+
       setIsLoading(false);
 
-      const publicRoutes = ["/login", "/register"];
+      const publicRoutes = ["/login", "/register", "/forgot-password", "/reset-password"];
+      const adminRoutes = ["/admin", "/admin-dashboard"];
       const isPublicRoute = publicRoutes.includes(location.pathname);
+      const isAdminRoute = adminRoutes.includes(location.pathname);
 
       if (currentSession) {
-        // User is logged in
-        if (isPublicRoute) {
-          navigate("/"); // Redirect to dashboard if trying to access login/register
+        // User is logged in (Supabase auth)
+        if (userRole === 'admin') {
+          // If a regular user tries to access admin routes, redirect them to their dashboard
+          if (isAdminRoute && !currentIsAdmin) { // If it's an admin route but not the custom admin
+             navigate("/"); // Redirect to user dashboard
+          } else if (isPublicRoute && !isAdminRoute) {
+            navigate("/"); // Redirect regular users from public routes
+          }
+        } else { // Regular user
+          if (isAdminRoute) {
+            navigate("/"); // Regular users cannot access admin routes
+          } else if (isPublicRoute) {
+            navigate("/"); // Redirect regular users from public routes
+          }
         }
       } else {
-        // User is not logged in
-        if (!isPublicRoute) {
+        // User is not logged in (Supabase auth)
+        if (!isPublicRoute && !isAdminRoute) {
           navigate("/login"); // Redirect to login if trying to access protected routes
         }
       }
-    });
+
+      // Handle custom admin session redirection
+      if (currentIsAdmin) {
+        if (!isAdminRoute && !isPublicRoute) { // If admin is logged in but not on an admin route or public route
+          navigate("/admin-dashboard");
+        }
+      } else if (isAdminRoute && location.pathname !== "/admin") { // If on an admin dashboard route but not logged in as custom admin
+        navigate("/admin");
+      }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
 
     // Initial session check
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      setSession(initialSession);
-      setIsLoading(false);
-
-      const publicRoutes = ["/login", "/register"];
-      const isPublicRoute = publicRoutes.includes(location.pathname);
-
-      if (initialSession) {
-        if (isPublicRoute) {
-          navigate("/");
-        }
-      } else {
-        if (!isPublicRoute) {
-          navigate("/login");
-        }
-      }
+      handleAuthStateChange('INITIAL_SESSION', initialSession);
     });
 
     return () => subscription.unsubscribe();
@@ -70,7 +109,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }
 
   return (
-    <SessionContext.Provider value={{ session, isLoading }}>
+    <SessionContext.Provider value={{ session, isAdmin, isLoading }}>
       {children}
     </SessionContext.Provider>
   );
