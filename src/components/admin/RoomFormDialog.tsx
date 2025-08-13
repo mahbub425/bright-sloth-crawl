@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { Home, Users, Info, Image as ImageIcon, Clock } from "lucide-react";
 import { Room } from "@/types/database";
-import { generateTimeOptions } from "@/components/BookingFormDialog"; // Re-use time options generator
+import { generateTimeOptions } from "@/components/BookingFormDialog"; // Corrected to named import
 
 const formSchema = z.object({
   name: z.string().min(1, "Room name is required"),
@@ -304,8 +304,8 @@ const RoomFormDialog: React.FC<RoomFormDialogProps> = ({ open, onOpenChange, roo
               {imagePreview && (
                 <img src={imagePreview} alt="Room Preview" className="w-24 h-24 object-cover rounded-md" />
               )}
-              {form.formState.errors.imageFile && (
-                <p className="text-red-500 text-sm">{form.formState.errors.imageFile.message}</p>
+              {form.formState.errors.imageFile?.message && (
+                <p className="text-red-500 text-sm">{String(form.formState.errors.imageFile.message)}</p>
               )}
             </div>
           </div>

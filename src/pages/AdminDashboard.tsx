@@ -14,7 +14,7 @@ import { Room, AdminPreference } from "@/types/database";
 import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
 import UserManagement from "@/components/admin/UserManagement";
 import BookingList from "@/components/admin/BookingList";
-import RoomManagement from "@/components/admin/RoomManagement"; // New import
+import RoomManagement from "@/components/admin/RoomManagement";
 import { DateRange } from "react-day-picker";
 
 const AdminDashboard = () => {
@@ -217,7 +217,7 @@ const AdminDashboard = () => {
             <BookingList />
           )}
           {activeTab === "rooms" && (
-            <RoomManagement /> {/* Render the new RoomManagement component */}
+            <RoomManagement />
           )}
         </div>
       </div>
