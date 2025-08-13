@@ -10,69 +10,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format, parseISO, isBefore, isAfter, addMinutes, isSameDay } from "date-fns"; // Added isSameDay import
+import { format, parseISO, isBefore, isAfter, addMinutes, isSameDay } from "date-fns";
 import { CalendarIcon, Clock, Text, Repeat, Info } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Room, Booking } from "@/types/database";
 import { cn } from "@/lib/utils";
 
-const formSchema = z.object({
-  title: z.string().min(1, "Meeting title is required").max(100, "Title cannot exceed 100 characters"),
-  date: z.date({ required_error: "Date is required" }),
-  startTime: z.string().min(1, "Start time is required"),
-  endTime: z.string().min(1, "End time is required"),
-  repeatType: z.enum(["no_repeat", "daily", "weekly", "custom"]).default("no_repeat"),
-  endDate: z.date().optional(), // Only required if repeatType is 'custom'
-  remarks: z.string().max(500, "Remarks cannot exceed 500 characters").optional(),
-}).superRefine((data, ctx) => {
-  if (data.date && data.startTime && data.endTime) {
-    const startDateTime = parseISO(format(data.date, "yyyy-MM-dd") + "T" + data.startTime);
-    const endDateTime = parseISO(format(data.date, "yyyy-MM-dd") + "T" + data.endTime);
-
-    if (isBefore(endDateTime, startDateTime)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "End time cannot be before start time",
-        path: ["endTime"],
-      });
-    }
-    if (isBefore(endDateTime, new Date()) && isBefore(startDateTime, new Date())) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Cannot book in the past",
-        path: ["date"],
-      });
-    }
-  }
-  if (data.repeatType === "custom" && !data.endDate) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "End date is required for custom repeat",
-      path: ["endDate"],
-    });
-  }
-  if (data.repeatType !== "no_repeat" && data.endDate && isBefore(data.endDate, data.date)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Repeat end date cannot be before start date",
-      path: ["endDate"],
-    });
-  }
-});
-
-interface BookingFormDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  room: Room | null;
-  selectedDate: Date;
-  initialStartTime?: string;
-  initialEndTime?: string;
-  existingBooking?: Booking | null; // For edit mode
-  onBookingSuccess: () => void;
-  userId: string;
-}
-
-const generateTimeOptions = (roomAvailableStart?: string, roomAvailableEnd?: string) => {
+export const generateTimeOptions = (roomAvailableStart?: string, roomAvailableEnd?: string) => {
   const options = [];
   const defaultStart = "00:00";
   const defaultEnd = "23:59";
@@ -85,13 +29,49 @@ const generateTimeOptions = (roomAvailableStart?: string, roomAvailableEnd?: str
   let currentTime = parseISO(`2000-01-01T${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}:00`);
   const endTime = parseISO(`2000-01-01T${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}:00`);
 
-  while (isBefore(currentTime, endTime) || isSameDay(currentTime, endTime)) { // Include end time if it's on a 30-min mark
+  while (isBefore(currentTime, endTime) || isSameDay(currentTime, endTime)) {
     options.push(format(currentTime, "HH:mm"));
     currentTime = addMinutes(currentTime, 30);
   }
   return options;
 };
 
+const formSchema = z.object({
+  title: z.string().min(1, "Meeting title is required"),
+  date: z.date({ required_error: "Date is required" }),
+  startTime: z.string().min(1, "Start time is required"),
+  endTime: z.string().min(1, "End time is required"),
+  repeatType: z.enum(["no_repeat", "daily", "weekly", "custom"]).default("no_repeat"),
+  endDate: z.date().optional(), // Required if repeatType is 'custom'
+  remarks: z.string().optional(),
+}).refine((data) => {
+  const startDateTime = parseISO(`2000-01-01T${data.startTime}:00`);
+  const endDateTime = parseISO(`2000-01-01T${data.endTime}:00`);
+  return isBefore(startDateTime, endDateTime);
+}, {
+  message: "End time must be after start time",
+  path: ["endTime"],
+}).refine((data) => {
+  if (data.repeatType === "custom" && !data.endDate) {
+    return false;
+  }
+  return true;
+}, {
+  message: "End date is required for custom repeat",
+  path: ["endDate"],
+});
+
+interface BookingFormDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  room: Room | null;
+  selectedDate: Date;
+  initialStartTime?: string;
+  initialEndTime?: string;
+  existingBooking?: Booking | null;
+  onBookingSuccess: () => void;
+  userId: string;
+}
 
 const BookingFormDialog: React.FC<BookingFormDialogProps> = ({
   open,
