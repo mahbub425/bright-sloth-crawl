@@ -7,10 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, Edit, Trash2, QrCode, ToggleLeft, ToggleRight } from "lucide-react";
+import { Search, Plus, Edit, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import RoomFormDialog from "./RoomFormDialog";
-import RoomQrCodeDialog from "./RoomQrCodeDialog";
 import { deleteImage, getPathFromPublicUrl } from "@/integrations/supabase/storage";
 
 const roomsPerPageOptions = [10, 20, 50, 100];
@@ -25,8 +24,6 @@ const RoomManagement = () => {
   const [isAddRoomDialogOpen, setIsAddRoomDialogOpen] = useState(false);
   const [isEditRoomDialogOpen, setIsEditRoomDialogOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
-  const [isQrCodeDialogOpen, setIsQrCodeDialogOpen] = useState(false);
-  const [qrCodeRoom, setQrCodeRoom] = useState<Room | null>(null);
 
   const fetchRooms = useCallback(async () => {
     const offset = (currentPage - 1) * roomsPerPage;
@@ -128,14 +125,6 @@ const RoomManagement = () => {
     }
   };
 
-  const handleViewQrCode = (room: Room) => {
-    // For now, the QR code will just contain the room ID.
-    // In a real app, this might link to a public room details page.
-    const qrCodeContent = `${window.location.origin}/room/${room.id}`; // Example URL
-    setQrCodeRoom({ ...room, qr_code: qrCodeContent });
-    setIsQrCodeDialogOpen(true);
-  };
-
   const totalPages = Math.ceil(totalRoomsCount / roomsPerPage);
 
   return (
@@ -208,13 +197,6 @@ const RoomManagement = () => {
                       </span>
                     </TableCell>
                     <TableCell className="text-right space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleViewQrCode(room)}
-                      >
-                        <QrCode className="h-4 w-4" />
-                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -308,16 +290,6 @@ const RoomManagement = () => {
           onOpenChange={setIsEditRoomDialogOpen}
           room={editingRoom}
           onSaveSuccess={handleEditRoomSuccess}
-        />
-      )}
-
-      {/* QR Code Dialog */}
-      {isQrCodeDialogOpen && qrCodeRoom && qrCodeRoom.qr_code && (
-        <RoomQrCodeDialog
-          open={isQrCodeDialogOpen}
-          onOpenChange={setIsQrCodeDialogOpen}
-          qrCodeUrl={qrCodeRoom.qr_code}
-          roomName={qrCodeRoom.name}
         />
       )}
     </div>
