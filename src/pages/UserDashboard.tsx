@@ -18,6 +18,8 @@ import { Label } from "@/components/ui/label";
 import RoomList from "@/components/RoomList";
 import DailyScheduleGrid from "@/components/DailyScheduleGrid";
 import { Room, Booking, UserPreference } from "@/types/database"; // Import types
+import BookingFormDialog from "@/components/BookingFormDialog"; // Import BookingFormDialog
+import BookingDetailsDialog from "@/components/BookingDetailsDialog"; // Import BookingDetailsDialog
 
 const UserDashboard = () => {
   const { session, isAdmin, isLoading } = useSession();
@@ -35,6 +37,7 @@ const UserDashboard = () => {
   const [bookingFormOpen, setBookingFormOpen] = useState(false);
   const [viewingBooking, setViewingBooking] = useState<Booking | null>(null);
   const [bookingDetailsOpen, setBookingDetailsOpen] = useState(false);
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null); // State for editing
 
   useEffect(() => {
     if (session) {
@@ -173,8 +176,7 @@ const UserDashboard = () => {
     const room = rooms.find(r => r.id === roomId);
     if (room) {
       setSelectedRoomForBooking(room);
-      // Pre-fill form with date, start/end time, and room
-      // For now, just open the form. Actual pre-filling will be in BookingFormDialog
+      setEditingBooking(null); // Ensure we are in create mode
       setBookingFormOpen(true);
     }
   };
@@ -182,6 +184,17 @@ const UserDashboard = () => {
   const handleViewBooking = (booking: Booking) => {
     setViewingBooking(booking);
     setBookingDetailsOpen(true);
+  };
+
+  const handleEditBooking = (booking: Booking) => {
+    setEditingBooking(booking);
+    setSelectedRoomForBooking(rooms.find(r => r.id === booking.room_id) || null);
+    setBookingDetailsOpen(false); // Close details dialog
+    setBookingFormOpen(true); // Open form in edit mode
+  };
+
+  const handleBookingOperationSuccess = () => {
+    fetchBookings(selectedDate || new Date()); // Refresh bookings for the current date
   };
 
   if (isLoading) {
@@ -310,38 +323,31 @@ const UserDashboard = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Booking Form Dialog (Placeholder for now) */}
-      <Dialog open={bookingFormOpen} onOpenChange={setBookingFormOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Book Meeting</DialogTitle>
-          </DialogHeader>
-          <p>Booking form for {selectedRoomForBooking?.name} on {selectedDate ? format(selectedDate, "PPP") : ""}</p>
-          {/* BookingFormDialog component will go here */}
-        </DialogContent>
-      </Dialog>
+      {/* Booking Form Dialog */}
+      {bookingFormOpen && session?.user?.id && (
+        <BookingFormDialog
+          open={bookingFormOpen}
+          onOpenChange={setBookingFormOpen}
+          room={selectedRoomForBooking}
+          selectedDate={selectedDate || new Date()}
+          initialStartTime={editingBooking?.start_time.substring(0,5) || undefined}
+          initialEndTime={editingBooking?.end_time.substring(0,5) || undefined}
+          existingBooking={editingBooking}
+          onBookingSuccess={handleBookingOperationSuccess}
+          userId={session.user.id}
+        />
+      )}
 
-      {/* Booking Details Dialog (Placeholder for now) */}
-      <Dialog open={bookingDetailsOpen} onOpenChange={setBookingDetailsOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Booking Details</DialogTitle>
-          </DialogHeader>
-          {viewingBooking ? (
-            <div>
-              <p>Title: {viewingBooking.title}</p>
-              <p>Room ID: {viewingBooking.room_id}</p>
-              <p>Date: {viewingBooking.date}</p>
-              <p>Time: {viewingBooking.start_time} - {viewingBooking.end_time}</p>
-              <p>Booked by: {viewingBooking.user_name} ({viewingBooking.user_pin})</p>
-              <p>Department: {viewingBooking.user_department}</p>
-              <p>Remarks: {viewingBooking.remarks || "N/A"}</p>
-            </div>
-          ) : (
-            <p>No booking selected.</p>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Booking Details Dialog */}
+      {bookingDetailsOpen && (
+        <BookingDetailsDialog
+          open={bookingDetailsOpen}
+          onOpenChange={setBookingDetailsOpen}
+          booking={viewingBooking}
+          onEdit={handleEditBooking}
+          onDeleteSuccess={handleBookingOperationSuccess}
+        />
+      )}
 
       <MadeWithDyad />
     </div>
