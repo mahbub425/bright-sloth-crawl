@@ -98,7 +98,7 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
                 key={slot}
                 className="h-12 flex items-center justify-center p-2 font-semibold text-sm text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 last:border-r-0"
               >
-                {format(parseISO(`2000-01-01T${slot}`), "ha").toLowerCase()}
+                {format(parseISO(`2000-01-01T${slot}`), "h a")} {/* Changed to 12-hour format */}
               </div>
             ))}
           </div>
@@ -110,9 +110,10 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
                 const bookingInSlot = getBookingsForRoomAndSlot(room.id, slot)[0];
                 const cellClasses = cn(
                   "h-12 flex items-center justify-center p-1 border-r border-b border-gray-200 dark:border-gray-700 last:border-r-0",
+                  "cursor-pointer", // Always pointer for clickable cells
                   booked
-                    ? "bg-blue-100 dark:bg-blue-900/30 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-900/50"
-                    : "bg-gray-50 dark:bg-gray-700/20 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/40"
+                    ? "bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50"
+                    : "bg-gray-50 dark:bg-gray-700/20 group hover:bg-gray-100 dark:hover:bg-gray-700/40" // Added group for hover effect
                 );
 
                 return (
@@ -130,7 +131,8 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
                         </span>
                       </span>
                     ) : (
-                      <Plus className="h-4 w-4 text-gray-400 group-hover:text-gray-600" />
+                      // Hidden by default, visible on hover
+                      <Plus className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                     )}
                   </div>
                 );
