@@ -14,6 +14,7 @@ interface WeeklyRoomDetailsDialogProps {
   room: Room | null;
   initialDate: Date;
   onBookSlot: (roomId: string, date: Date, startTime: string, endTime: string) => void;
+  onViewBooking: (booking: Booking) => void; // New prop to view booking details
 }
 
 // Helper to generate 30-minute time slots based on room's available time
@@ -68,6 +69,7 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
   room,
   initialDate,
   onBookSlot,
+  onViewBooking, // Destructure new prop
 }) => {
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(initialDate);
@@ -157,12 +159,9 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
   };
 
   const handleBookingCardClick = (booking: Booking) => {
-    // Show details of the existing booking
-    toast({
-      title: booking.title,
-      description: `Booked by ${booking.user_name} (${booking.user_pin}) from ${format(parseISO(`2000-01-01T${booking.start_time}`), "h:mma")} to ${format(parseISO(`2000-01-01T${booking.end_time}`), "h:mma")}. Remarks: ${booking.remarks || 'N/A'}`,
-      duration: 5000,
-    });
+    // Show details of the existing booking using the shared BookingDetailsDialog
+    onViewBooking(booking);
+    onOpenChange(false); // Close this dialog
   };
 
   if (!room) {

@@ -11,6 +11,7 @@ interface WeeklyScheduleGridProps {
   selectedDate: Date;
   onViewRoomDetails: (room: Room, date: Date) => void;
   onSelectDate: (date: Date) => void; // New prop to update the selected date in parent
+  onViewBooking: (booking: Booking) => void; // New prop to view booking details
 }
 
 const WeeklyScheduleGrid: React.FC<WeeklyScheduleGridProps> = ({
@@ -19,6 +20,7 @@ const WeeklyScheduleGrid: React.FC<WeeklyScheduleGridProps> = ({
   selectedDate,
   onViewRoomDetails,
   onSelectDate,
+  onViewBooking, // Destructure new prop
 }) => {
   // Generate 7 days starting from the selectedDate
   const weekDates = Array.from({ length: 7 }).map((_, i) => addDays(selectedDate, i));
@@ -113,13 +115,26 @@ const WeeklyScheduleGrid: React.FC<WeeklyScheduleGridProps> = ({
                   <div
                     key={`${room.id}-${format(date, "yyyy-MM-dd")}`}
                     className={cellClasses}
-                    onClick={() => onViewRoomDetails(room, date)}
+                    onClick={() => {
+                      if (dailyBookings.length > 0) {
+                        // If there are bookings, view details of the first one (or handle multiple)
+                        // For simplicity, we'll open the WeeklyRoomDetailsDialog to show all for that day
+                        onViewRoomDetails(room, date);
+                      } else {
+                        // If no bookings, allow booking a new slot (handled by WeeklyRoomDetailsDialog)
+                        onViewRoomDetails(room, date);
+                      }
+                    }}
                   >
                     {dailyBookings.slice(0, 2).map((booking) => (
                       <div
                         key={booking.id}
                         className="text-xs text-white text-center leading-tight mb-1 p-1 rounded-sm w-full"
                         style={{ backgroundColor: room.color || "#888" }} // Apply room color
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent triggering the parent cell's onClick
+                          onViewBooking(booking); // Open details for this specific booking
+                        }}
                       >
                         <span className="font-medium">{booking.title.substring(0, 15)}{booking.title.length > 15 ? "..." : ""}</span>
                         <br />

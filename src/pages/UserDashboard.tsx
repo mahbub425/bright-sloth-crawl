@@ -59,6 +59,28 @@ const UserDashboard = () => {
     }
   }, [selectedDate, layout, session]);
 
+  // Real-time subscription for bookings
+  useEffect(() => {
+    const channel = supabase
+      .channel('bookings_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'bookings' },
+        (payload) => {
+          console.log('Booking change received!', payload);
+          // Re-fetch bookings when a change occurs
+          if (selectedDate) {
+            fetchBookings(selectedDate, layout);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedDate, layout, session]); // Dependencies for the effect
+
   const fetchUserProfile = async () => {
     if (!session?.user?.id) return;
     const { data, error } = await supabase
@@ -213,6 +235,9 @@ const UserDashboard = () => {
 
   const handleBookingOperationSuccess = () => {
     fetchBookings(selectedDate || new Date(), layout); // Refresh bookings for the current date/week
+    setBookingFormOpen(false); // Close form after success
+    setBookingDetailsOpen(false); // Close details after success
+    setWeeklyRoomDetailsOpen(false); // Close weekly room details after success
   };
 
   const handleViewRoomDetailsForWeekly = (room: Room, date: Date) => {
@@ -322,6 +347,7 @@ const UserDashboard = () => {
               selectedDate={selectedDate || new Date()}
               onViewRoomDetails={handleViewRoomDetailsForWeekly}
               onSelectDate={setSelectedDate}
+              onViewBooking={handleViewBooking} // Pass onViewBooking to WeeklyScheduleGrid
             />
           )}
         </div>
@@ -381,6 +407,7 @@ const UserDashboard = () => {
           room={selectedRoomForWeeklyDetails}
           initialDate={selectedDateForWeeklyDetails}
           onBookSlot={handleBookSlot}
+          onViewBooking={handleViewBooking} // Pass onViewBooking to WeeklyRoomDetailsDialog
         />
       )}
 
