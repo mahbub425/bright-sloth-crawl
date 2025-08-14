@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { format, parseISO, addMinutes, isBefore, isAfter, startOfDay, endOfDay, isSameDay } from "date-fns";
-import { CalendarIcon, Clock, Users, Info, Image as ImageIcon, Plus } from "lucide-react"; // Added Plus import
+import { CalendarIcon, Clock, Users, Info, Image as ImageIcon, Plus } from "lucide-react";
 import { Room, Booking } from "@/types/database";
 import { supabase } from "@/integrations/supabase/auth";
 import { useToast } from "@/components/ui/use-toast";
@@ -20,7 +20,7 @@ interface WeeklyRoomDetailsDialogProps {
 const generateTimeOptions = (start: string, end: string, intervalMinutes: number = 30) => {
   const options = [];
   let currentTime = parseISO(`2000-01-01T${start}:00`);
-  const endTime = parseISO(`2000-01-01T${end}:00`);
+  const endTime = parseISO(`2200-01-01T${end}:00`); // Use a future year to ensure isBefore works correctly for 23:59
 
   while (isBefore(currentTime, endTime)) {
     options.push(format(currentTime, "HH:mm"));
@@ -89,6 +89,7 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
     return roomBookings.some(booking => {
       const bookingStart = parseISO(`2000-01-01T${booking.start_time}`);
       const bookingEnd = parseISO(`2000-01-01T${booking.end_time}`);
+      // Check for overlap: (startA < endB) && (endA > startB)
       return isBefore(bookingStart, slotEnd) && isAfter(bookingEnd, slotStart);
     });
   };
@@ -115,11 +116,10 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
       onBookSlot(room.id, selectedDate, startTime, endTime);
       onOpenChange(false); // Close this dialog after initiating booking
     } else {
-      // Optionally, show details of the booked slot if needed, or do nothing
       toast({
         title: "Slot Booked",
         description: "This time slot is already booked.",
-        variant: "default", // Changed from "info" to "default"
+        variant: "default",
       });
     }
   };
@@ -132,27 +132,30 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>{room.name} Details</DialogTitle>
+          <DialogTitle>{room.name}</DialogTitle>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto pr-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            {room.image && (
-              <div className="col-span-full md:col-span-1">
-                <img src={room.image} alt={room.name} className="w-full h-48 object-cover rounded-md" />
+          {room.image && (
+            <div className="mb-4 relative">
+              <img src={room.image} alt={room.name} className="w-full h-48 object-cover rounded-md" />
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white rounded-b-md">
+                <p className="text-sm font-medium">Capacity {room.capacity || "N/A"}, {room.facilities || "No special facilities"}</p>
               </div>
-            )}
-            <div className="col-span-full md:col-span-1 flex flex-col justify-center">
-              <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
+            </div>
+          )}
+          {!room.image && (
+            <div className="mb-4 p-4 bg-gray-100 dark:bg-gray-700 rounded-md">
+              <p className="text-sm text-gray-700 dark:text-gray-300 flex items-center">
                 <Users className="h-4 w-4 mr-2" /> Capacity: {room.capacity || "N/A"}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center mt-2">
+              <p className="text-sm text-gray-700 dark:text-gray-300 flex items-center mt-2">
                 <Info className="h-4 w-4 mr-2" /> Facilities: {room.facilities || "N/A"}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center mt-2">
+              <p className="text-sm text-gray-700 dark:text-gray-300 flex items-center mt-2">
                 <Clock className="h-4 w-4 mr-2" /> Available: {room.available_time ? `${room.available_time.start} - ${room.available_time.end}` : "24 hours"}
               </p>
             </div>
-          </div>
+          )}
 
           <div className="mb-4">
             <h3 className="text-lg font-semibold mb-2">Select Date</h3>
@@ -174,7 +177,7 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
                 const cellClasses = cn(
                   "p-2 rounded-md text-center text-sm cursor-pointer transition-colors",
                   booked
-                    ? "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200"
+                    ? "text-white" // Text color for booked slots
                     : "bg-gray-50 dark:bg-gray-700/20 hover:bg-gray-100 dark:hover:bg-gray-700/40"
                 );
                 return (
@@ -182,6 +185,7 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
                     key={slot}
                     className={cellClasses}
                     onClick={() => handleSlotClick(slot)}
+                    style={booked ? { backgroundColor: room.color || "#888" } : {}} // Apply room color to booked slots
                   >
                     {booked ? (
                       <>
