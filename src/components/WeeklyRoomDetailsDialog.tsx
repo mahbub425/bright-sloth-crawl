@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { format, parseISO, addMinutes, isBefore, isAfter, isSameDay, startOfWeek, addDays } from "date-fns";
-import { Clock, Users, Info, Image as ImageIcon, Plus } from "lucide-react";
+import { format, parseISO, addMinutes, isBefore, isAfter, isSameDay, startOfWeek, addDays, differenceInMinutes } from "date-fns";
+import { Users, Info, Plus } from "lucide-react"; // Removed Clock and ImageIcon as they are not explicitly used for display anymore
 import { Room, Booking } from "@/types/database";
 import { supabase } from "@/integrations/supabase/auth";
 import { useToast } from "@/components/ui/use-toast";
@@ -16,16 +16,23 @@ interface WeeklyRoomDetailsDialogProps {
   onBookSlot: (roomId: string, date: Date, startTime: string, endTime: string) => void;
 }
 
-const generateTimeOptions = (start: string, end: string, intervalMinutes: number = 30) => {
-  const options = [];
-  let currentTime = parseISO(`2000-01-01T${start}:00`);
-  const endTime = parseISO(`2000-01-01T${end}:00`);
+// Helper to generate 30-minute time options for the entire day
+const generateAllDayTimeSlots = (intervalMinutes: number = 30) => {
+  const slots = [];
+  let currentTime = parseISO(`2000-01-01T00:00:00`);
+  const endTime = parseISO(`2000-01-01T23:59:00`); // Up to 23:30
 
   while (isBefore(currentTime, endTime) || isSameDay(currentTime, endTime)) {
-    options.push(format(currentTime, "HH:mm"));
+    slots.push(format(currentTime, "HH:mm"));
     currentTime = addMinutes(currentTime, intervalMinutes);
   }
-  return options;
+  return slots;
+};
+
+// Helper to convert HH:MM to minutes from midnight
+const timeToMinutes = (timeString: string) => {
+  const [hours, minutes] = timeString.split(':').map(Number);
+  return hours * 60 + minutes;
 };
 
 const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
@@ -38,16 +45,13 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(initialDate);
   const [roomBookings, setRoomBookings] = useState<Booking[]>([]);
-  const [timeSlots, setTimeSlots] = useState<string[]>([]);
+
+  // Generate all 30-minute time slots for the entire day (00:00 to 23:30)
+  const allDayTimeSlots = generateAllDayTimeSlots();
 
   useEffect(() => {
     if (room && selectedDate) {
       fetchRoomBookings(room.id, selectedDate);
-      if (room.available_time) {
-        setTimeSlots(generateTimeOptions(room.available_time.start, room.available_time.end));
-      } else {
-        setTimeSlots(generateTimeOptions("00:00", "23:59")); // Default to full day if not specified
-      }
     }
   }, [room, selectedDate]);
 
@@ -81,45 +85,47 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
     }
   };
 
-  const isSlotBooked = (slotTime: string) => {
-    const slotStart = parseISO(`2000-01-01T${slotTime}:00`);
-    const slotEnd = addMinutes(slotStart, 30); // Assuming 30 min slots
-
-    return roomBookings.some(booking => {
-      const bookingStart = parseISO(`2000-01-01T${booking.start_time}`);
-      const bookingEnd = parseISO(`2000-01-01T${booking.end_time}`);
-      return isBefore(bookingStart, slotEnd) && isAfter(bookingEnd, slotStart);
-    });
-  };
-
-  const getBookingInSlot = (slotTime: string) => {
-    const slotStart = parseISO(`2000-01-01T${slotTime}:00`);
-    const slotEnd = addMinutes(slotStart, 30);
-
-    return roomBookings.find(booking => {
-      const bookingStart = parseISO(`2000-01-01T${booking.start_time}`);
-      const bookingEnd = parseISO(`2000-01-01T${booking.end_time}`);
-      return isBefore(bookingStart, slotEnd) && isAfter(bookingEnd, slotStart);
-    });
-  };
-
   const handleSlotClick = (slotTime: string) => {
     if (!room || !selectedDate) return;
 
-    const booked = isSlotBooked(slotTime);
-    if (!booked) {
-      // Default to 1-hour slot for new booking
-      const startTime = slotTime;
-      const endTime = format(addMinutes(parseISO(`2000-01-01T${slotTime}`), 60), "HH:mm");
-      onBookSlot(room.id, selectedDate, startTime, endTime);
-      onOpenChange(false); // Close this dialog after initiating booking
-    } else {
+    // Check if the clicked slot is within the room's available time
+    const slotStartMinutes = timeToMinutes(slotTime);
+    const roomStartMinutes = room.available_time ? timeToMinutes(room.available_time.start) : 0;
+    const roomEndMinutes = room.available_time ? timeToMinutes(room.available_time.end) : (24 * 60);
+
+    if (slotStartMinutes < roomStartMinutes || slotStartMinutes >= roomEndMinutes) {
       toast({
-        title: "Slot Booked",
-        description: "This time slot is already booked.",
-        variant: "default",
+        title: "Unavailable Time",
+        description: `This time slot is outside the room's available hours (${room.available_time?.start || '00:00'} - ${room.available_time?.end || '23:59'}).`,
+        variant: "destructive",
       });
+      return;
     }
+
+    // Check for overlapping bookings
+    const potentialBookingStart = parseISO(`2000-01-01T${slotTime}:00`);
+    const potentialBookingEnd = addMinutes(potentialBookingStart, 60); // Default to 1-hour slot for new booking
+
+    const hasConflict = roomBookings.some(booking => {
+      const existingBookingStart = parseISO(`2000-01-01T${booking.start_time}`);
+      const existingBookingEnd = parseISO(`2000-01-01T${booking.end_time}`);
+
+      // Check for overlap: (start1 < end2) && (end1 > start2)
+      return isBefore(potentialBookingStart, existingBookingEnd) && isAfter(potentialBookingEnd, existingBookingStart);
+    });
+
+    if (hasConflict) {
+      toast({
+        title: "Booking Conflict",
+        description: "The selected time slot overlaps with an existing booking in this room.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // If no conflict and within available time, proceed to book
+    onBookSlot(room.id, selectedDate, slotTime, format(potentialBookingEnd, "HH:mm"));
+    onOpenChange(false); // Close this dialog after initiating booking
   };
 
   if (!room) {
@@ -131,6 +137,9 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
   const currentWeekDates = Array.from({ length: 7 }).map((_, i) => addDays(startOfCurrentWeek, i));
   const nextWeekDates = Array.from({ length: 7 }).map((_, i) => addDays(startOfCurrentWeek, 7 + i));
 
+  // Track occupied slots to prevent rendering multiple booking cards for the same booking
+  const occupiedSlots = new Set<string>();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0">
@@ -138,37 +147,26 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
           <DialogTitle className="text-center">{room.name}</DialogTitle>
         </DialogHeader>
 
-        {/* Room Image */}
+        {/* Room Image with Overlay for Capacity & Facilities */}
         {room.image && (
-          <div className="mb-4 px-6 border-b border-gray-200 dark:border-gray-700 pb-4">
+          <div className="relative mb-4 px-6 border-b border-gray-200 dark:border-gray-700 pb-4">
             <img src={room.image} alt={room.name} className="w-full h-48 object-cover rounded-md" />
+            <div className="absolute bottom-4 left-6 right-6 bg-black/50 text-white p-2 rounded-md">
+              <p className="text-sm font-semibold">
+                Capacity {room.capacity || "N/A"}, {room.facilities || "N/A"}
+              </p>
+            </div>
           </div>
         )}
 
-        {/* Room Details (Capacity, Facilities) - Moved below image */}
-        <div className="px-6 mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="flex items-center text-gray-700 dark:text-gray-300">
-            <Users className="h-5 w-5 mr-2 text-blue-500" />
-            <span className="font-semibold">Capacity:</span> {room.capacity || "N/A"}
-          </div>
-          <div className="flex items-center text-gray-700 dark:text-gray-300">
-            <Clock className="h-5 w-5 mr-2 text-green-500" />
-            <span className="font-semibold">Available:</span> {room.available_time ? `${room.available_time.start} - ${room.available_time.end}` : "24 hours"}
-          </div>
-          <div className="col-span-full flex items-start text-gray-700 dark:text-gray-300">
-            <Info className="h-5 w-5 mr-2 text-purple-500 flex-shrink-0 mt-1" />
-            <span className="font-semibold">Facilities:</span> {room.facilities || "N/A"}
-          </div>
-        </div>
-
-        {/* Date Range Display */}
+        {/* Date Range Display (as per screenshot) */}
         <div className="px-6 mb-4 flex items-center justify-center text-gray-700 dark:text-gray-300">
           <span className="font-semibold">{format(currentWeekDates[0], "MMM dd, yyyy")}</span>
           <span className="mx-2">-</span>
           <span className="font-semibold">{format(currentWeekDates[6], "MMM dd, yyyy")}</span>
         </div>
 
-        {/* Custom Date Selector */}
+        {/* Custom Date Selector (Current and Next Week) */}
         <div className="px-6 mb-6">
           <div className="grid grid-cols-7 text-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {currentWeekDates.map((date) => (
@@ -207,51 +205,89 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
           </div>
         </div>
 
-        {/* Time Slots */}
+        {/* Time Slots Grid with Single Scrollbar */}
         <div className="flex-1 overflow-y-auto px-6 pb-4">
           <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">Time Slots for {selectedDate ? format(selectedDate, "PPP") : "Selected Date"}</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-60 overflow-y-auto pr-2">
-            {timeSlots.length > 0 ? (
-              timeSlots.map((slot) => {
-                const booked = isSlotBooked(slot);
-                const bookingInSlot = getBookingInSlot(slot);
-                
-                return (
-                  <div
-                    key={slot}
-                    className={cn(
-                      "p-2 rounded-md text-center text-sm cursor-pointer transition-colors flex flex-col justify-center items-center min-h-[60px]",
-                      booked
-                        ? "text-white"
-                        : "bg-gray-50 dark:bg-gray-700/20 hover:bg-gray-100 dark:hover:bg-gray-700/40 text-gray-700 dark:text-gray-300"
-                    )}
-                    style={booked ? { backgroundColor: room.color || "#888" } : {}}
-                    onClick={() => handleSlotClick(slot)}
-                  >
-                    {booked ? (
-                      <>
-                        <span className="font-medium">{bookingInSlot?.title.substring(0, 15)}{bookingInSlot?.title && bookingInSlot.title.length > 15 ? "..." : ""}</span>
-                        <span className="text-[10px] opacity-80">
-                          {format(parseISO(`2000-01-01T${bookingInSlot?.start_time}`), "h:mma")} - {format(parseISO(`2000-01-01T${bookingInSlot?.end_time}`), "h:mma")}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        {format(parseISO(`2000-01-01T${slot}`), "h:mma")}
-                        <Plus className="h-4 w-4 mx-auto mt-1 text-gray-400" />
-                      </>
-                    )}
-                  </div>
-                );
-              })
-            ) : (
-              <p className="col-span-full text-center text-gray-500">No available time slots for this room.</p>
-            )}
+          <div className="grid grid-cols-[60px_1fr] border border-gray-200 dark:border-gray-700 rounded-md relative">
+            {/* Left Column: Time Labels (fixed height, aligns with 30-min slots) */}
+            <div className="flex flex-col">
+              {allDayTimeSlots.map((slotTime, index) => (
+                <div
+                  key={`time-label-${slotTime}`}
+                  className="h-[60px] flex items-start justify-center pt-2 text-xs font-medium text-gray-600 dark:text-gray-400 border-b border-r border-gray-200 dark:border-gray-700 last:border-b-0"
+                >
+                  {/* Only display hourly labels for the first 30-min slot of each hour */}
+                  {index % 2 === 0 ? format(parseISO(`2000-01-01T${slotTime}`), "h a") : ''}
+                </div>
+              ))}
+            </div>
+
+            {/* Right Column: Booking Slots (relative for absolute positioning of bookings) */}
+            <div className="flex flex-col relative">
+              {allDayTimeSlots.map((slotTime, index) => {
+                const slotStart = parseISO(`2000-01-01T${slotTime}:00`);
+                const slotEnd = addMinutes(slotStart, 30);
+                const slotKey = `${room?.id}-${format(selectedDate || new Date(), 'yyyy-MM-dd')}-${slotTime}`;
+
+                // If this slot is already marked as occupied by a longer booking, skip rendering a new cell
+                if (occupiedSlots.has(slotKey)) {
+                  return null;
+                }
+
+                // Find a booking that starts exactly at this slot
+                const bookingInSlot = roomBookings.find(booking => {
+                  const bookingStart = parseISO(`2000-01-01T${booking.start_time}`);
+                  return isSameDay(bookingStart, slotStart);
+                });
+
+                if (bookingInSlot) {
+                  const bookingStart = parseISO(`2000-01-01T${bookingInSlot.start_time}`);
+                  const bookingEnd = parseISO(`2000-01-01T${bookingInSlot.end_time}`);
+                  const durationMinutes = differenceInMinutes(bookingEnd, bookingStart);
+                  const heightPx = (durationMinutes / 30) * 60; // Each 30-min slot is 60px high
+
+                  // Mark all 30-min slots covered by this booking as occupied
+                  for (let i = 0; i < durationMinutes / 30; i++) {
+                    const currentCoveredSlotTime = format(addMinutes(slotStart, i * 30), "HH:mm");
+                    occupiedSlots.add(`${room?.id}-${format(selectedDate || new Date(), 'yyyy-MM-dd')}-${currentCoveredSlotTime}`);
+                  }
+
+                  return (
+                    <div
+                      key={`booking-${bookingInSlot.id}-${slotTime}`}
+                      className="absolute left-0 right-0 p-2 rounded-md text-white cursor-pointer transition-colors duration-200 overflow-hidden flex flex-col justify-center items-center"
+                      style={{
+                        backgroundColor: room.color || "#888",
+                        top: `${index * 60}px`, // Position based on 30-min slot index
+                        height: `${heightPx}px`,
+                        zIndex: 10, // Ensure booking is above empty slots
+                      }}
+                      onClick={() => handleSlotClick(slotTime)} // Still allow clicking to book, or view details
+                    >
+                      <span className="font-medium text-center leading-tight text-sm truncate w-full px-1">
+                        {bookingInSlot.title}
+                      </span>
+                      <span className="text-xs text-center opacity-90 mt-1">
+                        {format(bookingStart, "h:mma")} - {format(bookingEnd, "h:mma")}
+                      </span>
+                    </div>
+                  );
+                } else {
+                  // Empty slot
+                  return (
+                    <div
+                      key={`empty-slot-${slotTime}`}
+                      className="h-[60px] flex items-center justify-center p-1 border-b border-gray-200 dark:border-gray-700 last:border-b-0 bg-gray-50 dark:bg-gray-700/20 group hover:bg-gray-100 dark:hover:bg-gray-700/40 cursor-pointer"
+                      onClick={() => handleSlotClick(slotTime)}
+                    >
+                      <Plus className="h-5 w-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  );
+                }
+              })}
+            </div>
           </div>
         </div>
-        <DialogFooter className="pt-4">
-          {/* Removed Close button as per request */}
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
