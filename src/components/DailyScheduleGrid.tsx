@@ -92,7 +92,7 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-flow-col auto-cols-max min-w-full border border-gray-200 dark:border-gray-700 rounded-lg shadow-md bg-white dark:bg-gray-800 relative">
+      <div className="grid grid-cols-[auto_1fr] min-w-full border border-gray-200 dark:border-gray-700 rounded-lg shadow-md bg-white dark:bg-gray-800 relative">
         {/* Room Header Column - Sticky */}
         <div className="grid grid-rows-1 auto-rows-min sticky left-0 z-20 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-md">
           <div className="h-16 flex items-center justify-center p-2 font-semibold text-sm text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
@@ -113,9 +113,9 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
         </div>
 
         {/* Main Grid Content - Scrollable */}
-        <div className="grid grid-rows-1 auto-rows-min overflow-x-hidden flex-1">
+        <div className="flex-1 overflow-x-hidden">
           {/* Hourly Time Headers */}
-          <div className="grid grid-flow-col auto-cols-[60px] border-b border-gray-200 dark:border-gray-700">
+          <div className="grid grid-cols-12 border-b border-gray-200 dark:border-gray-700">
             {visibleHourlyLabels.map((label, index) => (
               <div
                 key={label}
@@ -133,7 +133,7 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
             let slotsToSkip = 0; // Counter for 30-min slots covered by a rendered booking
 
             return (
-              <div key={room.id} className="grid grid-flow-col auto-cols-[60px] h-24"> {/* Each column is 60px for 30 min */}
+              <div key={room.id} className="grid grid-cols-12 h-24"> {/* Now 12 columns, stretching */}
                 {allDetailedTimeSlots.map((slotTime, index) => {
                   // Only render slots within the visible window
                   if (index < visibleTimeStartIndex || index >= visibleTimeStartIndex + 12) {
