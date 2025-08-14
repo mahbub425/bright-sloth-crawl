@@ -3,7 +3,7 @@ import { MadeWithDyad } from "@/components/made-with-dyad";
 import { useSession } from "@/components/SessionProvider";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/auth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Calendar as CalendarIcon, Share2, HelpCircle, User as UserIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -17,11 +17,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import RoomList from "@/components/RoomList";
 import DailyScheduleGrid from "@/components/DailyScheduleGrid";
-import WeeklyScheduleGrid from "@/components/WeeklyScheduleGrid"; // New import
-import WeeklyRoomDetailsDialog from "@/components/WeeklyRoomDetailsDialog"; // New import
-import { Room, Booking, UserPreference } from "@/types/database"; // Import types
-import BookingFormDialog from "@/components/BookingFormDialog"; // Import BookingFormDialog
-import BookingDetailsDialog from "@/components/BookingDetailsDialog"; // Import BookingDetailsDialog
+import WeeklyScheduleGrid from "@/components/WeeklyScheduleGrid";
+import WeeklyRoomDetailsDialog from "@/components/WeeklyRoomDetailsDialog";
+import { Room, Booking, UserPreference } from "@/types/database";
+import BookingFormDialog from "@/components/BookingFormDialog";
+import BookingDetailsDialog from "@/components/BookingDetailsDialog";
 
 const UserDashboard = () => {
   const { session, isAdmin, isLoading } = useSession();
@@ -39,8 +39,8 @@ const UserDashboard = () => {
   const [bookingFormOpen, setBookingFormOpen] = useState(false);
   const [viewingBooking, setViewingBooking] = useState<Booking | null>(null);
   const [bookingDetailsOpen, setBookingDetailsOpen] = useState(false);
-  const [editingBooking, setEditingBooking] = useState<Booking | null>(null); // State for editing
-  const [weeklyRoomDetailsOpen, setWeeklyRoomDetailsOpen] = useState(false); // State for weekly room details dialog
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [weeklyRoomDetailsOpen, setWeeklyRoomDetailsOpen] = useState(false);
   const [selectedRoomForWeeklyDetails, setSelectedRoomForWeeklyDetails] = useState<Room | null>(null);
   const [selectedDateForWeeklyDetails, setSelectedDateForWeeklyDetails] = useState<Date | undefined>(undefined);
 
@@ -57,7 +57,7 @@ const UserDashboard = () => {
     if (selectedDate) {
       fetchBookings(selectedDate, layout);
     }
-  }, [selectedDate, layout, session]); // Re-fetch bookings when layout changes
+  }, [selectedDate, layout, session]);
 
   const fetchUserProfile = async () => {
     if (!session?.user?.id) return;
@@ -306,9 +306,7 @@ const UserDashboard = () => {
 
         {/* Right Content Area (Main Schedule View) */}
         <div className="flex-1 p-4 overflow-auto">
-          <h2 className="text-2xl font-bold mb-4">
-            {layout === "daily" ? "Daily Schedule" : "Weekly Schedule"} for {selectedDate ? format(selectedDate, "EEEE, MMMM dd, yyyy") : "Selected Date"}
-          </h2>
+          {/* Removed the H2 tag from here, it will be managed by DailyScheduleGrid/WeeklyScheduleGrid */}
           {layout === "daily" ? (
             <DailyScheduleGrid
               rooms={rooms}
@@ -322,6 +320,7 @@ const UserDashboard = () => {
               rooms={rooms}
               bookings={bookings}
               selectedDate={selectedDate || new Date()}
+              onSetSelectedDate={setSelectedDate} // Pass setSelectedDate
               onViewRoomDetails={handleViewRoomDetailsForWeekly}
             />
           )}
