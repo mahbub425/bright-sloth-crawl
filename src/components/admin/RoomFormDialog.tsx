@@ -75,7 +75,7 @@ const RoomFormDialog: React.FC<RoomFormDialogProps> = ({ open, onOpenChange, roo
         availableTimeStart: room.available_time?.start || "09:00",
         availableTimeEnd: room.available_time?.end || "17:00",
         color: room.color || generateRandomColor(),
-        imageFile: undefined, // Clear file input on edit
+        imageFile: undefined, // Clear file input on edit, but don't set to null
       });
       setCurrentImageUrl(room.image);
     } else if (open && !room) {
@@ -95,53 +95,59 @@ const RoomFormDialog: React.FC<RoomFormDialogProps> = ({ open, onOpenChange, roo
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
-    let imagePath: string | null = currentImageUrl ? getPathFromPublicUrl(currentImageUrl) : null;
+    let finalImageUrlForDb: string | null = currentImageUrl; // Initialize with current displayed URL
 
     try {
-      // Handle image upload if a new file is selected
-      if (values.imageFile && values.imageFile.length > 0) {
-        const file = values.imageFile[0];
-        const fileExtension = file.name.split('.').pop();
-        const fileName = `${room?.id || crypto.randomUUID()}.${fileExtension}`;
-        const filePath = `public/${fileName}`; // Path within the bucket
+      const imageFileInput = form.getValues("imageFile"); // Get the actual FileList from the form
 
-        // Always delete the old image if one exists
+      // Case 1: A new image file is selected (imageFileInput is a FileList with at least one file)
+      if (imageFileInput && imageFileInput.length > 0) {
+        const file = imageFileInput[0];
+        const fileExtension = file.name.split('.').pop();
+        const fileId = room?.id || crypto.randomUUID();
+        const filePathInBucket = `public/${fileId}.${fileExtension}`;
+
+        // Delete old image if it exists and its path is different from the new one
         if (currentImageUrl) {
-          const oldImagePathInBucket = getPathFromPublicUrl(currentImageUrl);
-          if (oldImagePathInBucket) {
-            await deleteImage(oldImagePathInBucket); // This calls supabase.storage.from(BUCKET_NAME).remove([path])
+          const oldPathInBucket = getPathFromPublicUrl(currentImageUrl);
+          if (oldPathInBucket && oldPathInBucket !== filePathInBucket) {
+            await deleteImage(oldPathInBucket);
           }
         }
 
-        // Upload the new image without upsert: true
         const { data: uploadData, error: uploadError } = await supabase.storage
-          .from(BUCKET_NAME) // Use the exported BUCKET_NAME
-          .upload(filePath, file, {
+          .from(BUCKET_NAME)
+          .upload(filePathInBucket, file, {
             cacheControl: '3600',
-            upsert: false, // Explicitly set to false
+            upsert: true,
           });
 
         if (uploadError) {
           throw uploadError;
         }
-        imagePath = getPublicImageUrl(uploadData.path); // Get public URL from the path returned by upload
-      } else if (values.imageFile === null && currentImageUrl) {
-        // User explicitly removed image (e.g., cleared input)
-        await deleteImage(getPathFromPublicUrl(currentImageUrl)!);
-        imagePath = null;
+        finalImageUrlForDb = getPublicImageUrl(uploadData.path);
       }
+      // Case 2: User explicitly cleared the image input (imageFileInput is an empty FileList)
+      else if (imageFileInput && imageFileInput.length === 0 && currentImageUrl) {
+        const oldPathInBucket = getPathFromPublicUrl(currentImageUrl);
+        if (oldPathInBucket) {
+          await deleteImage(oldPathInBucket);
+        }
+        finalImageUrlForDb = null; // Set image to null in DB
+      }
+      // Case 3: No change to image input (imageFileInput is undefined), keep existing image
+      // In this case, finalImageUrlForDb retains its initial value of currentImageUrl.
 
       const roomData = {
         name: values.name,
         capacity: values.capacity,
         facilities: values.facilities,
         available_time: { start: values.availableTimeStart, end: values.availableTimeEnd },
-        image: imagePath ? getPublicImageUrl(imagePath) : null,
+        image: finalImageUrlForDb,
         color: values.color,
       };
 
       if (room) {
-        // Update existing room
         const { error } = await supabase
           .from('rooms')
           .update({ ...roomData, updated_at: new Date().toISOString() })
@@ -150,16 +156,17 @@ const RoomFormDialog: React.FC<RoomFormDialogProps> = ({ open, onOpenChange, roo
         if (error) throw error;
         toast({ title: "Room Updated", description: "Room details updated successfully." });
       } else {
-        // Add new room
         const { error } = await supabase
           .from('rooms')
-          .insert({ ...roomData, status: 'enabled' }); // New rooms are enabled by default
+          .insert({ ...roomData, status: 'enabled' });
 
         if (error) throw error;
         toast({ title: "Room Added", description: "New room added successfully." });
       }
 
-      onSaveSuccess();
+      // Crucial: Update the local state for immediate UI preview
+      setCurrentImageUrl(finalImageUrlForDb);
+      onSaveSuccess(); // This will trigger a re-fetch of rooms in parent component
     } catch (error: any) {
       console.error("Room form submission error:", error);
       form.setError("root.serverError", {
