@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Admins can insert profiles" ON public.profiles;

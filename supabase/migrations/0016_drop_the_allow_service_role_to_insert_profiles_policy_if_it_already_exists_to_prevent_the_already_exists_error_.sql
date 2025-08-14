@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Allow service role to insert profiles" ON public.profiles;
