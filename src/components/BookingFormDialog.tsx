@@ -36,6 +36,12 @@ export const generateTimeOptions = (roomAvailableStart?: string, roomAvailableEn
   return options;
 };
 
+// Helper to convert HH:MM to minutes from midnight
+const timeToMinutes = (timeString: string) => {
+  const [hours, minutes] = timeString.split(':').map(Number);
+  return hours * 60 + minutes;
+};
+
 const formSchema = z.object({
   title: z.string().min(1, "Meeting title is required"),
   date: z.date({ required_error: "Date is required" }),
@@ -142,15 +148,15 @@ const BookingFormDialog: React.FC<BookingFormDialogProps> = ({
     setIsSubmitting(true);
 
     const formattedDate = format(values.date, "yyyy-MM-dd");
-    const startDateTime = parseISO(`${formattedDate}T${values.startTime}:00`);
-    const endDateTime = parseISO(`${formattedDate}T${values.endTime}:00`);
-
-    // Validate against room's available time
+    
+    // Validate against room's available time using minute-based comparison
     if (room.available_time) {
-      const roomStart = parseISO(`2000-01-01T${room.available_time.start}:00`);
-      const roomEnd = parseISO(`2000-01-01T${room.available_time.end}:00`);
+      const bookingStartMinutes = timeToMinutes(values.startTime);
+      const bookingEndMinutes = timeToMinutes(values.endTime);
+      const roomStartMinutes = timeToMinutes(room.available_time.start);
+      const roomEndMinutes = timeToMinutes(room.available_time.end);
 
-      if (isBefore(startDateTime, roomStart) || isAfter(endDateTime, roomEnd)) {
+      if (bookingStartMinutes < roomStartMinutes || bookingEndMinutes > roomEndMinutes) {
         toast({
           title: "Booking Error",
           description: `Booking must be within room's available hours: ${room.available_time.start} - ${room.available_time.end}.`,
