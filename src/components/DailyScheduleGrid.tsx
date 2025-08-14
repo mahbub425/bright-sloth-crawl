@@ -3,7 +3,7 @@ import { Room, Booking } from "@/types/database";
 import { format, parseISO, addMinutes, isBefore, isAfter, differenceInMinutes } from "date-fns";
 import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button"; // Assuming Button component is available
+import { Button } from "@/components/ui/button";
 
 interface DailyScheduleGridProps {
   rooms: Room[];
@@ -70,27 +70,32 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
   };
 
   return (
-    <div className="overflow-hidden"> {/* Changed to overflow-hidden as arrows control scroll */}
-      <div className="flex items-center justify-between mb-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handlePrevTimeRange}
-          disabled={visibleTimeStartIndex === 0}
-        >
-          <ChevronLeft className="h-5 w-5" />
-        </Button>
-        <h2 className="text-2xl font-bold text-center">
-          Daily Schedule for {selectedDate ? format(selectedDate, "EEEE, MMMM dd, yyyy") : "Selected Date"}
-        </h2>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleNextTimeRange}
-          disabled={visibleTimeStartIndex >= (allDetailedTimeSlots.length - 12)}
-        >
-          <ChevronRight className="h-5 w-5" />
-        </Button>
+    <div className="overflow-x-auto">
+      <div className="mb-4 flex justify-between items-end">
+        <div>
+          <h2 className="text-2xl font-bold">Daily Schedule</h2>
+          <p className="text-lg text-gray-600 dark:text-gray-400">
+            {selectedDate ? format(selectedDate, "EEEE, MMMM dd, yyyy") : "Selected Date"}
+          </p>
+        </div>
+        <div className="flex space-x-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handlePrevTimeRange}
+            disabled={visibleTimeStartIndex === 0}
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleNextTimeRange}
+            disabled={visibleTimeStartIndex >= (allDetailedTimeSlots.length - 12)}
+          >
+            <ChevronRight className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-flow-col auto-cols-max min-w-full border border-gray-200 dark:border-gray-700 rounded-lg shadow-md bg-white dark:bg-gray-800 relative">
@@ -114,7 +119,7 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
         </div>
 
         {/* Main Grid Content - Scrollable */}
-        <div className="grid grid-rows-1 auto-rows-min overflow-x-hidden flex-1"> {/* Changed to overflow-x-hidden */}
+        <div className="grid grid-rows-1 auto-rows-min overflow-x-hidden flex-1">
           {/* Hourly Time Headers */}
           <div className="grid grid-flow-col auto-cols-[60px] border-b border-gray-200 dark:border-gray-700">
             {visibleHourlyLabels.map((label, index) => (
@@ -135,7 +140,12 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
 
             return (
               <div key={room.id} className="grid grid-flow-col auto-cols-[60px] h-24"> {/* Each column is 60px for 30 min */}
-                {visibleDetailedTimeSlots.map((slotTime, index) => {
+                {allDetailedTimeSlots.map((slotTime, index) => {
+                  // Only render slots within the visible window
+                  if (index < visibleTimeStartIndex || index >= visibleTimeStartIndex + 12) {
+                    return null;
+                  }
+
                   if (slotsToSkip > 0) {
                     slotsToSkip--;
                     return null; // This slot is covered by a previously rendered booking
