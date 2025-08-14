@@ -1,14 +1,16 @@
 import React from "react";
 import { Room, Booking } from "@/types/database";
-import { format, addDays, isSameDay, parseISO } from "date-fns"; // Removed startOfWeek
+import { format, addDays, subDays, isSameDay, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Plus } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface WeeklyScheduleGridProps {
   rooms: Room[];
   bookings: Booking[];
   selectedDate: Date;
   onViewRoomDetails: (room: Room, date: Date) => void;
+  onSelectDate: (date: Date) => void; // New prop to update the selected date in parent
 }
 
 const WeeklyScheduleGrid: React.FC<WeeklyScheduleGridProps> = ({
@@ -16,6 +18,7 @@ const WeeklyScheduleGrid: React.FC<WeeklyScheduleGridProps> = ({
   bookings,
   selectedDate,
   onViewRoomDetails,
+  onSelectDate,
 }) => {
   // Generate 7 days starting from the selectedDate
   const weekDates = Array.from({ length: 7 }).map((_, i) => addDays(selectedDate, i));
@@ -26,8 +29,41 @@ const WeeklyScheduleGrid: React.FC<WeeklyScheduleGridProps> = ({
     ).sort((a, b) => a.start_time.localeCompare(b.start_time));
   };
 
+  const handlePrevWeek = () => {
+    onSelectDate(subDays(selectedDate, 7));
+  };
+
+  const handleNextWeek = () => {
+    onSelectDate(addDays(selectedDate, 7));
+  };
+
   return (
     <div className="overflow-x-auto">
+      <div className="mb-4 flex justify-between items-end">
+        <div>
+          <h2 className="text-2xl font-bold">Weekly Schedule</h2>
+          <p className="text-lg text-gray-600 dark:text-gray-400">
+            {format(weekDates[0], "MMM dd, yyyy")} - {format(weekDates[6], "MMM dd, yyyy")}
+          </p>
+        </div>
+        <div className="flex space-x-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handlePrevWeek}
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleNextWeek}
+          >
+            <ChevronRight className="h-5 w-5" />
+          </Button>
+        </div>
+      </div>
+
       <div className="grid grid-flow-col auto-cols-max min-w-full border border-gray-200 dark:border-gray-700 rounded-lg shadow-md bg-white dark:bg-gray-800">
         {/* Header Row: Rooms / Dates */}
         <div className="grid grid-rows-1 auto-rows-min sticky left-0 z-10 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
@@ -69,7 +105,7 @@ const WeeklyScheduleGrid: React.FC<WeeklyScheduleGridProps> = ({
                 const cellClasses = cn(
                   "h-24 flex flex-col items-center justify-center p-1 border-r border-b border-gray-200 dark:border-gray-700 last:border-r-0",
                   dailyBookings.length > 0
-                    ? "bg-blue-50 dark:bg-blue-900/30 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                    ? "cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/50"
                     : "bg-gray-50 dark:bg-gray-700/20 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/40"
                 );
 
@@ -80,10 +116,14 @@ const WeeklyScheduleGrid: React.FC<WeeklyScheduleGridProps> = ({
                     onClick={() => onViewRoomDetails(room, date)}
                   >
                     {dailyBookings.slice(0, 2).map((booking) => (
-                      <div key={booking.id} className="text-xs text-blue-800 dark:text-blue-200 text-center leading-tight mb-1">
+                      <div
+                        key={booking.id}
+                        className="text-xs text-white text-center leading-tight mb-1 p-1 rounded-sm w-full"
+                        style={{ backgroundColor: room.color || "#888" }} // Apply room color
+                      >
                         <span className="font-medium">{booking.title.substring(0, 15)}{booking.title.length > 15 ? "..." : ""}</span>
                         <br />
-                        <span className="text-[10px] opacity-80">
+                        <span className="text-[10px] opacity-90">
                           {format(parseISO(`2000-01-01T${booking.start_time}`), "h:mma")} - {format(parseISO(`2000-01-01T${booking.end_time}`), "h:mma")}
                         </span>
                       </div>
