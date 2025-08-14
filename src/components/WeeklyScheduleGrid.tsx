@@ -1,6 +1,6 @@
 import React from "react";
 import { Room, Booking } from "@/types/database";
-import { format, startOfWeek, addDays, isSameDay, parseISO } from "date-fns";
+import { format, addDays, isSameDay, parseISO } from "date-fns"; // Removed startOfWeek
 import { cn } from "@/lib/utils";
 import { Plus } from "lucide-react";
 
@@ -17,8 +17,8 @@ const WeeklyScheduleGrid: React.FC<WeeklyScheduleGridProps> = ({
   selectedDate,
   onViewRoomDetails,
 }) => {
-  const startOfCurrentWeek = startOfWeek(selectedDate, { weekStartsOn: 0 }); // Sunday as start of week
-  const weekDates = Array.from({ length: 7 }).map((_, i) => addDays(startOfCurrentWeek, i));
+  // Generate 7 days starting from the selectedDate
+  const weekDates = Array.from({ length: 7 }).map((_, i) => addDays(selectedDate, i));
 
   const getBookingsForRoomAndDate = (roomId: string, date: Date) => {
     return bookings.filter(booking =>
