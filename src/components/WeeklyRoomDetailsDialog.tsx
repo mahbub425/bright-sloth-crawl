@@ -247,7 +247,7 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
               {dynamicHourlyLabels.map((label, index) => (
                 <div
                   key={`time-label-${label}`}
-                  className="h-[120px] flex items-center justify-center pt-2 text-xs font-medium text-gray-600 dark:text-gray-400 border-b border-r border-gray-200 dark:border-gray-700 last:border-b-0"
+                  className="h-[60px] flex items-start justify-center pt-1 text-xs font-medium text-gray-600 dark:text-gray-400 border-b border-r border-gray-200 dark:border-gray-700 last:border-b-0"
                 >
                   {label}
                 </div>
@@ -256,46 +256,62 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
 
             {/* Right Column: Booking Slots and Empty Cells */}
             <div className="relative flex-1">
-              {/* Render all 30-minute background cells */}
-              {dynamic30MinSlots.map((slotTime, index) => (
-                <div
-                  key={`background-slot-${slotTime}`}
-                  className="h-[60px] flex items-center justify-center p-1 border-b border-gray-200 dark:border-gray-700 last:border-b-0 bg-gray-50 dark:bg-gray-700/20 group hover:bg-gray-100 dark:hover:bg-gray-700/40 cursor-pointer"
-                  onClick={() => handleEmptySlotClick(slotTime)}
-                >
-                  <Plus className="h-5 w-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-              ))}
+              {dynamic30MinSlots.map((slotTime, index) => {
+                const slotStartDateTime = parseISO(`2000-01-01T${slotTime}:00`);
+
+                // Determine if this 30-min slot is covered by any booking
+                const coveringBooking = roomBookings.find(booking => {
+                  const bookingStart = parseISO(`2000-01-01T${booking.start_time}`);
+                  const bookingEnd = parseISO(`2000-01-01T${booking.end_time}`);
+                  const slotEndDateTime = addMinutes(slotStartDateTime, 30);
+                  return isBefore(slotStartDateTime, bookingEnd) && isAfter(slotEndDateTime, bookingStart);
+                });
+
+                // Only render the background cell if it's NOT covered by a booking
+                if (!coveringBooking) {
+                  return (
+                    <div
+                      key={`empty-slot-${slotTime}`}
+                      className="h-[30px] flex items-center justify-center p-1 border-b border-gray-200 dark:border-gray-700 last:border-b-0 bg-gray-50 dark:bg-gray-700/20 group hover:bg-gray-100 dark:hover:bg-gray-700/40 cursor-pointer"
+                      onClick={() => handleEmptySlotClick(slotTime)}
+                      style={{ top: `${index * 30}px`, position: 'absolute', left: 0, right: 0 }}
+                    >
+                      <Plus className="h-5 w-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  );
+                }
+                return null; // Do not render background for covered slots
+              })}
 
               {/* Render all booking cards on top */}
               {roomBookings.map(booking => {
                 const bookingStart = parseISO(`2000-01-01T${booking.start_time}`);
                 const bookingEnd = parseISO(`2000-01-01T${booking.end_time}`);
                 const durationMinutes = differenceInMinutes(bookingEnd, bookingStart);
-                const heightPx = (durationMinutes / 30) * 60;
+                const heightPx = (durationMinutes / 30) * 30; // Each 30-min slot is 30px high
 
                 // Calculate top position based on the start time relative to the first dynamic slot
                 const firstSlotTime = dynamic30MinSlots[0];
                 const firstSlotStart = parseISO(`2000-01-01T${firstSlotTime}:00`);
                 const offsetMinutes = differenceInMinutes(bookingStart, firstSlotStart);
-                const topPx = (offsetMinutes / 30) * 60;
+                const topPx = (offsetMinutes / 30) * 30;
 
                 return (
                   <div
                     key={`booking-${booking.id}`}
-                    className="absolute left-0 right-0 p-2 rounded-md text-white cursor-pointer transition-colors duration-200 overflow-hidden flex flex-col justify-center items-center"
+                    className="absolute left-0 right-0 p-1 rounded-md text-white cursor-pointer transition-colors duration-200 overflow-hidden flex flex-col justify-center items-center mx-[2px]"
                     style={{
                       backgroundColor: room.color || "#888",
                       top: `${topPx}px`,
                       height: `${heightPx}px`,
-                      zIndex: 10,
+                      zIndex: 10, // Ensure booking is above empty slots
                     }}
                     onClick={() => handleBookingCardClick(booking)}
                   >
-                    <span className="font-medium text-center leading-tight text-sm truncate w-full px-1">
+                    <span className="font-medium text-center leading-tight text-xs truncate w-full px-1">
                       {booking.title}
                     </span>
-                    <span className="text-xs text-center opacity-90 mt-1">
+                    <span className="text-[10px] text-center opacity-90 mt-1">
                       {format(bookingStart, "h:mma")} - {format(bookingEnd, "h:mma")}
                     </span>
                   </div>
