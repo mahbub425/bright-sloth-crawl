@@ -104,10 +104,11 @@ const RoomFormDialog: React.FC<RoomFormDialogProps> = ({ open, onOpenChange, roo
       if (imageFileInput && imageFileInput.length > 0) {
         const file = imageFileInput[0];
         const fileExtension = file.name.split('.').pop();
-        const fileId = room?.id || crypto.randomUUID();
-        const filePathInBucket = `public/${fileId}.${fileExtension}`;
+        // Always generate a new UUID for the filename to ensure uniqueness
+        const newFileUuid = crypto.randomUUID();
+        const filePathInBucket = `public/${newFileUuid}.${fileExtension}`;
 
-        // Delete old image if it exists and its path is different from the new one
+        // Delete old image if it exists
         if (currentImageUrl) {
           const oldPathInBucket = getPathFromPublicUrl(currentImageUrl);
           if (oldPathInBucket) { // Only delete if a valid path was extracted
@@ -119,7 +120,7 @@ const RoomFormDialog: React.FC<RoomFormDialogProps> = ({ open, onOpenChange, roo
           .from(BUCKET_NAME)
           .upload(filePathInBucket, file, {
             cacheControl: '3600',
-            // upsert: true, // REMOVED THIS LINE TO AVOID RLS ISSUES
+            // upsert: true, // This was removed in the previous step, which is good.
           });
 
         if (uploadError) {
