@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Room, Booking } from "@/types/database";
-import { format, parseISO, addMinutes, isBefore, isAfter, differenceInMinutes } from "date-fns";
+import { format, parseISO, addMinutes, isBefore, isAfter, differenceInMinutes, isSameDay } from "date-fns";
 import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ const generateDetailedTimeSlots = (intervalMinutes: number = 30) => {
 
   while (isBefore(currentTime, endTime) || (currentTime.getHours() === endTime.getHours() && currentTime.getMinutes() === endTime.getMinutes())) {
     slots.push(format(currentTime, "HH:mm"));
-    currentTime = addMinutes(currentTime, intervalMinutes);
+    currentTime = addMinutes(currentTime, 30);
   }
   return slots;
 };
@@ -64,8 +64,9 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
   };
 
   const getBookingsForRoomAndDate = (roomId: string, date: Date) => {
+    const formattedSelectedDate = format(date, "yyyy-MM-dd");
     return bookings.filter(booking =>
-      booking.room_id === roomId && format(parseISO(booking.date), "yyyy-MM-dd") === format(date, "yyyy-MM-dd")
+      booking.room_id === roomId && booking.date === formattedSelectedDate
     ).sort((a, b) => a.start_time.localeCompare(b.start_time));
   };
 
@@ -134,12 +135,7 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
 
             return (
               <div key={room.id} className="grid grid-cols-12 h-24"> {/* Now 12 columns, stretching */}
-                {allDetailedTimeSlots.map((slotTime, index) => {
-                  // Only render slots within the visible window
-                  if (index < visibleTimeStartIndex || index >= visibleTimeStartIndex + 12) {
-                    return null;
-                  }
-
+                {visibleDetailedTimeSlots.map((slotTime, index) => {
                   if (slotsToSkip > 0) {
                     slotsToSkip--;
                     return null; // This slot is covered by a previously rendered booking
@@ -151,7 +147,7 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
                   // Find a booking that starts exactly at this 30-min slot
                   for (const booking of dailyBookings) {
                     const bookingStart = parseISO(`2000-01-01T${booking.start_time}`);
-                    if (bookingStart.getTime() === slotStartDateTime.getTime()) {
+                    if (isSameDay(bookingStart, slotStartDateTime) && bookingStart.getHours() === slotStartDateTime.getHours() && bookingStart.getMinutes() === slotStartDateTime.getMinutes()) {
                       renderedBooking = booking;
                       break;
                     }

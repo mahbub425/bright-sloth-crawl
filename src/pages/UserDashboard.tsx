@@ -157,6 +157,9 @@ const UserDashboard = () => {
           name,
           pin,
           department
+        ),
+        rooms (
+          name
         )
       `);
 
@@ -180,14 +183,15 @@ const UserDashboard = () => {
         variant: "destructive",
       });
     } else {
-      // Flatten the data to include user details directly in booking object
-      const bookingsWithUserDetails = data.map(booking => ({
+      // Flatten the data to include user and room details directly in booking object
+      const bookingsWithDetails = data.map(booking => ({
         ...booking,
         user_name: booking.profiles?.name,
         user_pin: booking.profiles?.pin,
         user_department: booking.profiles?.department,
+        room_name: booking.rooms?.name, // Add room name from joined table
       })) as Booking[];
-      setBookings(bookingsWithUserDetails || []);
+      setBookings(bookingsWithDetails || []);
     }
   };
 
