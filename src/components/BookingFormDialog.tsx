@@ -47,7 +47,7 @@ const formSchema = z.object({
   date: z.date({ required_error: "Date is required" }),
   startTime: z.string().min(1, "Start time is required"),
   endTime: z.string().min(1, "End time is required"),
-  repeatType: z.enum(["no_repeat", "daily", "weekly", "custom"]).default("no_repeat"),
+  repeatType: z.enum(["no_repeat", "daily", "weekly", "monthly", "custom"]).default("no_repeat"),
   endDate: z.date().optional(), // Required if repeatType is 'custom'
   remarks: z.string().optional(),
 }).refine((data) => {
@@ -58,6 +58,11 @@ const formSchema = z.object({
   message: "End time must be after start time",
   path: ["endTime"],
 }).refine((data) => {
+  if (data.repeatType !== "no_repeat" && data.repeatType !== "custom" && !data.endDate) {
+    // For daily, weekly, monthly, if no custom end date, it should be optional.
+    // If custom, endDate is required.
+    return true; // Handled by the specific repeatType logic below
+  }
   if (data.repeatType === "custom" && !data.endDate) {
     return false;
   }
@@ -230,15 +235,43 @@ const BookingFormDialog: React.FC<BookingFormDialogProps> = ({
 
         if (error) throw error;
 
+        // If it's a repeating booking, call the Edge Function
         if (values.repeatType !== "no_repeat" && data) {
-          const { error: repeatError } = await supabase
-            .from('booking_repeats')
-            .insert({
-              booking_id: data.id,
-              repeat_type: values.repeatType,
-              end_date: values.endDate ? format(values.endDate, "yyyy-MM-dd") : null,
+          const edgeFunctionUrl = `https://lusmncqulwpcaquprcls.supabase.co/functions/v1/generate-repeated-bookings`;
+          
+          const { data: edgeFunctionData, error: edgeFunctionError } = await supabase.functions.invoke(
+            'generate-repeated-bookings',
+            {
+              body: JSON.stringify({
+                initialBooking: {
+                  id: data.id, // Pass the ID of the initial booking
+                  user_id: userId,
+                  room_id: room.id,
+                  title: values.title,
+                  date: formattedDate,
+                  start_time: values.startTime,
+                  end_time: values.endTime,
+                  remarks: values.remarks,
+                },
+                repeatType: values.repeatType,
+                endDate: values.endDate ? format(values.endDate, "yyyy-MM-dd") : null,
+                userId: userId,
+              }),
+              headers: { 'Content-Type': 'application/json' },
+            }
+          );
+
+          if (edgeFunctionError) {
+            console.error("Error invoking Edge Function:", edgeFunctionError);
+            toast({
+              title: "Repeat Booking Error",
+              description: `Failed to generate repeated bookings: ${edgeFunctionError.message}`,
+              variant: "destructive",
             });
-          if (repeatError) console.error("Error inserting repeat booking:", repeatError);
+          } else {
+            console.log("Edge Function response:", edgeFunctionData);
+            toast({ title: "Repeat Bookings Generated", description: `${edgeFunctionData.count} additional bookings created.` });
+          }
         }
 
         toast({ title: "Booking Confirmed", description: "Meeting booked successfully!" });
@@ -351,7 +384,7 @@ const BookingFormDialog: React.FC<BookingFormDialogProps> = ({
                 <Label htmlFor="repeatType" className="text-right flex items-center col-span-1">
                   <Repeat className="inline-block mr-1 h-4 w-4" /> Repeat
                 </Label>
-                <Select onValueChange={(value: "no_repeat" | "daily" | "weekly" | "custom") => form.setValue("repeatType", value)} value={repeatType}>
+                <Select onValueChange={(value: "no_repeat" | "daily" | "weekly" | "monthly" | "custom") => form.setValue("repeatType", value)} value={repeatType}>
                   <SelectTrigger id="repeatType" className="col-span-3">
                     <SelectValue placeholder="No repeat" />
                   </SelectTrigger>
@@ -359,6 +392,7 @@ const BookingFormDialog: React.FC<BookingFormDialogProps> = ({
                     <SelectItem value="no_repeat">No Repeat</SelectItem>
                     <SelectItem value="daily">Daily</SelectItem>
                     <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
                     <SelectItem value="custom">Custom End Date</SelectItem>
                   </SelectContent>
                 </Select>
@@ -366,7 +400,7 @@ const BookingFormDialog: React.FC<BookingFormDialogProps> = ({
                   <p className="text-red-500 text-sm col-span-4 text-right">{form.formState.errors.repeatType.message}</p>
                 )}
               </div>
-              {repeatType === "custom" && (
+              {(repeatType === "daily" || repeatType === "weekly" || repeatType === "monthly" || repeatType === "custom") && (
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="endDate" className="text-right flex items-center col-span-1">
                     <CalendarIcon className="inline-block mr-1 h-4 w-4" /> End Date
@@ -381,7 +415,7 @@ const BookingFormDialog: React.FC<BookingFormDialogProps> = ({
                         )}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {form.watch("endDate") ? format(form.watch("endDate"), "PPP") : <span>Pick end date</span>}
+                        {form.watch("endDate") ? format(form.watch("endDate"), "PPP") : <span>Pick end date (Optional)</span>}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
