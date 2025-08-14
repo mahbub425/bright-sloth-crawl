@@ -4,20 +4,21 @@ import { Button } from "@/components/ui/button";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { supabase } from "@/integrations/supabase/auth";
 import { useToast } from "@/components/ui/use-toast";
-import { Users, ListChecks, BarChart3, Home } from "lucide-react"; // Removed CalendarIcon
+import { Users, ListChecks, BarChart3, Home } from "lucide-react";
 import { format, subMonths } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { useSession } from "@/components/SessionProvider";
 import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
 import UserManagement from "@/components/admin/UserManagement";
 import BookingList from "@/components/admin/BookingList";
-import RoomManagement from "@/components/admin/RoomManagement"; // New import
+import RoomManagement from "@/components/admin/RoomManagement";
+import { Room } from "@/types/database"; // Import Room type
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { session, isAdmin, isLoading } = useSession(); // Use useSession hook
-  const [activeTab, setActiveTab] = useState("analytics"); // Default tab
+  const { session, isAdmin, isLoading } = useSession();
+  const [activeTab, setActiveTab] = useState("analytics");
 
   // Filter states for Analytics
   const [filterRoomId, setFilterRoomId] = useState<string | null>(null);
@@ -29,25 +30,24 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     if (!isLoading && !isAdmin) {
-      // If not loading and not an admin, redirect to admin login
       navigate("/admin");
     }
   }, [isLoading, isAdmin, navigate]);
 
   useEffect(() => {
-    if (session) { // Fetch preferences and rooms only if a session exists
+    if (session) {
       fetchAdminPreferences();
       fetchRooms();
     }
   }, [session]);
 
   const fetchAdminPreferences = async () => {
-    if (!session?.user?.id) return; // Ensure user ID is available
+    if (!session?.user?.id) return;
 
     const { data: preferences, error } = await supabase
       .from('admin_preferences')
       .select('*')
-      .eq('admin_id', session.user.id) // Use session.user.id
+      .eq('admin_id', session.user.id)
       .single();
 
     if (preferences && !error) {
@@ -99,7 +99,7 @@ const AdminDashboard = () => {
   };
 
   const handleAdminLogout = async () => {
-    await supabase.auth.signOut(); // Use Supabase signOut
+    await supabase.auth.signOut();
     toast({
       title: "Logged Out",
       description: "You have been logged out from the admin panel.",
@@ -116,7 +116,7 @@ const AdminDashboard = () => {
     );
   }
 
-  if (!isAdmin) { // Check isAdmin from useSession
+  if (!isAdmin) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
         <h1 className="text-4xl font-bold mb-4">Admin Access Denied</h1>
@@ -156,7 +156,7 @@ const AdminDashboard = () => {
               <ListChecks className="mr-2 h-4 w-4" /> Booking List
             </Button>
             <Button
-              variant={activeTab === "rooms" ? "secondary" : "ghost"} // New button for Room Management
+              variant={activeTab === "rooms" ? "secondary" : "ghost"}
               className="w-full justify-start"
               onClick={() => setActiveTab("rooms")}
             >
@@ -188,7 +188,7 @@ const AdminDashboard = () => {
           {activeTab === "bookings" && (
             <BookingList />
           )}
-          {activeTab === "rooms" && ( // Render RoomManagement component
+          {activeTab === "rooms" && (
             <RoomManagement />
           )}
         </div>

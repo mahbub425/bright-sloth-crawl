@@ -26,6 +26,14 @@ const generateHourlyLabels = () => {
   return labels;
 };
 
+interface DailyScheduleGridProps {
+  rooms: Room[];
+  bookings: Booking[];
+  selectedDate: Date;
+  onBookSlot: (roomId: string, date: Date, startTime: string, endTime: string) => void;
+  onViewBooking: (booking: Booking) => void;
+}
+
 const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
   rooms,
   bookings,
@@ -56,9 +64,9 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
 
   const getBookingsForRoomAndDate = (roomId: string, date: Date) => {
     const formattedSelectedDate = format(date, "yyyy-MM-dd");
-    return bookings.filter(booking =>
+    return bookings.filter((booking: Booking) =>
       booking.room_id === roomId && booking.date === formattedSelectedDate
-    ).sort((a, b) => a.start_time.localeCompare(b.start_time));
+    ).sort((a: Booking, b: Booking) => a.start_time.localeCompare(b.start_time));
   };
 
   return (
@@ -90,7 +98,7 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
           <div className="h-16 flex items-center justify-center p-2 font-semibold text-sm text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
             Rooms / Time
           </div>
-          {rooms.map((room) => (
+          {rooms.map((room: Room) => (
             <div
               key={room.id}
               className="h-24 flex items-center p-2 border-b border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-800 dark:text-gray-200"
@@ -108,7 +116,7 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
         <div className="flex-1 overflow-x-hidden">
           {/* Hourly Time Headers */}
           <div className="grid grid-cols-12 border-b border-gray-200 dark:border-gray-700">
-            {visibleHourlyLabels.map((label, _index) => (
+            {visibleHourlyLabels.map((label: string, _index: number) => (
               <div
                 key={label}
                 className="h-16 flex items-center justify-center p-2 font-semibold text-sm text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 last:border-r-0"
@@ -120,13 +128,13 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
           </div>
 
           {/* Room Schedule Rows */}
-          {rooms.map((room) => {
+          {rooms.map((room: Room) => {
             const dailyBookings = getBookingsForRoomAndDate(room.id, selectedDate);
             let slotsToSkip = 0; // Counter for 30-min slots covered by a rendered booking
 
             return (
               <div key={room.id} className="grid grid-cols-12 h-24"> {/* Now 12 columns, stretching */}
-                {visibleDetailedTimeSlots.map((slotTime, _index) => {
+                {visibleDetailedTimeSlots.map((slotTime: string, _index: number) => {
                   if (slotsToSkip > 0) {
                     slotsToSkip--;
                     return null; // This slot is covered by a previously rendered booking
@@ -174,7 +182,7 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
                     );
                   } else {
                     // Check if this slot is covered by an ongoing booking that started earlier
-                    const isCoveredByEarlierBooking = dailyBookings.some(booking => {
+                    const isCoveredByEarlierBooking = dailyBookings.some((booking: Booking) => {
                       const bookingStart = parseISO(`2000-01-01T${booking.start_time}`);
                       const bookingEnd = parseISO(`2000-01-01T${booking.end_time}`);
                       return isBefore(bookingStart, slotStartDateTime) && isAfter(bookingEnd, slotStartDateTime);
