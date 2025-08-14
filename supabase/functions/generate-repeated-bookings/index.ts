@@ -1,4 +1,36 @@
-/// <reference lib="deno.ns" />
+// Removed: /// <reference lib="deno.ns" />
+
+// Explicit type declarations for Deno global object
+declare namespace Deno {
+  export namespace env {
+    function get(key: string): string | undefined;
+  }
+}
+
+// Explicit type declarations for remote modules
+declare module "https://deno.land/std@0.190.0/http/server.ts" {
+  export function serve(handler: (request: Request) => Response | Promise<Response>): Promise<void>;
+}
+
+declare module "https://esm.sh/@supabase/supabase-js@2.45.0" {
+  import { SupabaseClient as SupabaseClientType } from '@supabase/supabase-js'; // Use an alias to avoid conflict if @supabase/supabase-js is also in node_modules
+  export function createClient(supabaseUrl: string, supabaseKey: string, options?: any): SupabaseClientType;
+  // Add other necessary types from @supabase/supabase-js if they cause errors
+}
+
+declare module "https://esm.sh/date-fns@3.6.0" {
+  export function addDays(date: Date | number, amount: number): Date;
+  export function addWeeks(date: Date | number, amount: number): Date;
+  export function addMonths(date: Date | number, amount: number): Date;
+  export function format(date: Date | number, formatStr: string): string;
+  export function getDay(date: Date | number): number;
+  export function getDate(date: Date | number): number;
+  export function getWeekOfMonth(date: Date | number): number;
+  export function isBefore(date: Date | number, dateToCompare: Date | number): boolean;
+  export function parseISO(dateString: string): Date;
+  // Add other necessary date-fns types if they cause errors
+}
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { addDays, addWeeks, addMonths, format, getDay, getDate, getWeekOfMonth, isBefore, parseISO } from 'https://esm.sh/date-fns@3.6.0';
@@ -34,18 +66,33 @@ serve(async (req) => {
     );
 
     const bookingsToInsert = [];
-    let currentDate = parseISO(initialBooking.date);
+    let nextRepeatDate = parseISO(initialBooking.date);
     const endDate = rawEndDate ? parseISO(rawEndDate) : null;
 
-    while (endDate === null || !isBefore(endDate, currentDate)) {
+    // Advance to the next potential repeat date based on the repeat type
+    if (repeatType === 'daily' || repeatType === 'custom') {
+        nextRepeatDate = addDays(nextRepeatDate, 1);
+    } else if (repeatType === 'weekly') {
+        nextRepeatDate = addWeeks(nextRepeatDate, 1); // Start checking from next week
+    } else if (repeatType === 'monthly') {
+        nextRepeatDate = addMonths(nextRepeatDate, 1);
+    } else { // no_repeat or unknown type, no further bookings to generate
+        return new Response(JSON.stringify({ message: 'No repeated bookings to generate.', count: 0 }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+        });
+    }
+
+    while (endDate === null || !isBefore(endDate, nextRepeatDate)) {
       let shouldBook = true;
 
-      if (repeatType === 'daily') {
-        const dayOfWeek = getDay(currentDate); // Sunday - 0, Monday - 1, ..., Saturday - 6
+      if (repeatType === 'daily' || repeatType === 'custom') { // Apply daily rules to custom as well
+        const dayOfWeek = getDay(nextRepeatDate); // Sunday - 0, Monday - 1, ..., Saturday - 6
         if (dayOfWeek === 5) { // Friday
           shouldBook = false;
         } else if (dayOfWeek === 6) { // Saturday
-          const weekOfMonth = getWeekOfMonth(currentDate);
+          const weekOfMonth = getWeekOfMonth(nextRepeatDate);
+          // Exclude 1st, 3rd, and 4th Saturdays
           if (weekOfMonth === 1 || weekOfMonth === 3 || weekOfMonth === 4) {
             shouldBook = false;
           }
@@ -57,25 +104,22 @@ serve(async (req) => {
           user_id: userId,
           room_id: initialBooking.room_id,
           title: initialBooking.title,
-          date: format(currentDate, 'yyyy-MM-dd'),
+          date: format(nextRepeatDate, 'yyyy-MM-dd'),
           start_time: initialBooking.start_time,
           end_time: initialBooking.end_time,
           remarks: initialBooking.remarks,
         });
       }
 
-      // Move to the next date based on repeat type
-      if (repeatType === 'daily') {
-        currentDate = addDays(currentDate, 1);
+      // Advance to the next potential repeat date
+      if (repeatType === 'daily' || repeatType === 'custom') {
+        nextRepeatDate = addDays(nextRepeatDate, 1);
       } else if (repeatType === 'weekly') {
-        currentDate = addWeeks(currentDate, 1);
+        nextRepeatDate = addWeeks(nextRepeatDate, 2); // Every other week
       } else if (repeatType === 'monthly') {
-        currentDate = addMonths(currentDate, 1);
-      } else if (repeatType === 'custom') {
-        // For custom, we only insert the initial booking and rely on end_date for the loop termination
-        // The loop condition handles this, so we just break after the first iteration if it's custom
-        break;
-      } else { // no_repeat or unknown type
+        nextRepeatDate = addMonths(nextRepeatDate, 1);
+      } else {
+        // Should not happen if initial check for no_repeat is done.
         break;
       }
 
@@ -86,27 +130,21 @@ serve(async (req) => {
       }
     }
 
-    // Remove the initial booking from the list if it's already handled by the client
-    // The client will insert the first booking, so we only insert subsequent repeats here.
-    const firstBookingDate = format(parseISO(initialBooking.date), 'yyyy-MM-dd');
-    const filteredBookingsToInsert = bookingsToInsert.filter(b => b.date !== firstBookingDate || b.start_time !== initialBooking.start_time || b.end_time !== initialBooking.end_time);
-
-
-    if (filteredBookingsToInsert.length > 0) {
+    if (bookingsToInsert.length > 0) {
       const { error: insertError } = await supabaseClient
         .from('bookings')
-        .insert(filteredBookingsToInsert);
+        .insert(bookingsToInsert);
 
       if (insertError) {
         console.error("Error inserting repeated bookings:", insertError);
-        return new Response(JSON.stringify({ error: insertError.message }), {
+        return new Response(JSON.stringify({ error: error.message }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 500,
         });
       }
     }
 
-    return new Response(JSON.stringify({ message: 'Repeated bookings generated successfully.', count: filteredBookingsToInsert.length }), {
+    return new Response(JSON.stringify({ message: 'Repeated bookings generated successfully.', count: bookingsToInsert.length }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
