@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { format, parseISO, addMinutes, isBefore, isAfter, isSameDay } from "date-fns";
-import { CalendarIcon, Clock, Users, Info, Image as ImageIcon, Plus } from "lucide-react";
+import { format, parseISO, addMinutes, isBefore, isAfter, isSameDay, startOfWeek, addDays } from "date-fns";
+import { Clock, Users, Info, Image as ImageIcon, Plus } from "lucide-react";
 import { Room, Booking } from "@/types/database";
 import { supabase } from "@/integrations/supabase/auth";
 import { useToast } from "@/components/ui/use-toast";
@@ -127,51 +126,78 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
     return null;
   }
 
+  // Generate dates for current and next week
+  const startOfCurrentWeek = startOfWeek(selectedDate || new Date(), { weekStartsOn: 0 }); // Sunday as start of week
+  const currentWeekDates = Array.from({ length: 7 }).map((_, i) => addDays(startOfCurrentWeek, i));
+  const nextWeekDates = Array.from({ length: 7 }).map((_, i) => addDays(startOfCurrentWeek, 7 + i));
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>{room.name} Details</DialogTitle>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0"> {/* Removed padding and added p-0 */}
+        <DialogHeader className="p-6 pb-4"> {/* Added padding back to header */}
+          <DialogTitle className="text-center">{room.name}</DialogTitle>
         </DialogHeader>
-        <div className="flex-1 overflow-y-auto pr-4">
-          {/* Room Image */}
-          {room.image && (
-            <div className="mb-4">
-              <img src={room.image} alt={room.name} className="w-full h-48 object-cover rounded-md" />
-            </div>
-          )}
 
-          {/* Room Details */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-            <div className="flex items-center text-gray-700 dark:text-gray-300">
-              <Users className="h-5 w-5 mr-2 text-blue-500" />
-              <span className="font-semibold">Capacity:</span> {room.capacity || "N/A"}
-            </div>
-            <div className="flex items-center text-gray-700 dark:text-gray-300">
-              <Clock className="h-5 w-5 mr-2 text-green-500" />
-              <span className="font-semibold">Available:</span> {room.available_time ? `${room.available_time.start} - ${room.available_time.end}` : "24 hours"}
-            </div>
-            <div className="col-span-full flex items-start text-gray-700 dark:text-gray-300">
-              <Info className="h-5 w-5 mr-2 text-purple-500 flex-shrink-0 mt-1" />
-              <span className="font-semibold">Facilities:</span> {room.facilities || "N/A"}
+        {/* Room Image */}
+        {room.image && (
+          <div className="mb-4 px-6"> {/* Added horizontal padding */}
+            <img src={room.image} alt={room.name} className="w-full h-48 object-cover rounded-md" />
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white rounded-b-md">
+              <p className="text-sm font-semibold">Capacity {room.capacity}, {room.facilities}</p>
             </div>
           </div>
+        )}
 
-          {/* Calendar for Date Selection */}
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">Select Date</h3>
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={setSelectedDate}
-              className="rounded-md border shadow mx-auto bg-white dark:bg-gray-800"
-              numberOfMonths={1}
-            />
+        {/* Date Range Display (as per screenshot) */}
+        <div className="px-6 mb-4 flex items-center justify-center text-gray-700 dark:text-gray-300">
+          <span className="font-semibold">{format(currentWeekDates[0], "MMM dd, yyyy")}</span>
+          <span className="mx-2">-</span>
+          <span className="font-semibold">{format(currentWeekDates[6], "MMM dd, yyyy")}</span>
+        </div>
+
+        {/* Custom Date Selector */}
+        <div className="px-6 mb-6"> {/* Added horizontal padding */}
+          <div className="grid grid-cols-7 text-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {currentWeekDates.map((date) => (
+              <span key={`day-name-${format(date, 'yyyy-MM-dd')}`}>{format(date, "EEE")}</span>
+            ))}
           </div>
+          <div className="grid grid-cols-7 gap-2 text-center">
+            {currentWeekDates.map((date) => (
+              <Button
+                key={`date-current-${format(date, 'yyyy-MM-dd')}`}
+                variant="outline"
+                size="icon"
+                className={cn(
+                  "rounded-full w-9 h-9",
+                  isSameDay(date, selectedDate || new Date()) && "bg-blue-500 text-white hover:bg-blue-600"
+                )}
+                onClick={() => setSelectedDate(date)}
+              >
+                {format(date, "d")}
+              </Button>
+            ))}
+            {nextWeekDates.map((date) => (
+              <Button
+                key={`date-next-${format(date, 'yyyy-MM-dd')}`}
+                variant="outline"
+                size="icon"
+                className={cn(
+                  "rounded-full w-9 h-9",
+                  isSameDay(date, selectedDate || new Date()) && "bg-blue-500 text-white hover:bg-blue-600"
+                )}
+                onClick={() => setSelectedDate(date)}
+              >
+                {format(date, "d")}
+              </Button>
+            ))}
+          </div>
+        </div>
 
-          {/* Time Slots */}
+        {/* Time Slots */}
+        <div className="flex-1 overflow-y-auto px-6 pb-4"> {/* Only this section scrolls */}
           <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">Time Slots for {selectedDate ? format(selectedDate, "PPP") : "Selected Date"}</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-60 overflow-y-auto pr-2">
+          <div className="grid grid-cols-1 gap-2"> {/* Changed to single column for time slots */}
             {timeSlots.length > 0 ? (
               timeSlots.map((slot) => {
                 const booked = isSlotBooked(slot);
@@ -181,7 +207,7 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
                   <div
                     key={slot}
                     className={cn(
-                      "p-2 rounded-md text-center text-sm cursor-pointer transition-colors flex flex-col justify-center items-center min-h-[60px]",
+                      "p-2 rounded-md text-center text-sm cursor-pointer transition-colors flex justify-between items-center min-h-[60px] border border-gray-200 dark:border-gray-700",
                       booked
                         ? "text-white" // Text color for booked slots
                         : "bg-gray-50 dark:bg-gray-700/20 hover:bg-gray-100 dark:hover:bg-gray-700/40 text-gray-700 dark:text-gray-300"
@@ -189,18 +215,19 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
                     style={booked ? { backgroundColor: room.color || "#888" } : {}} // Apply room color for booked slots
                     onClick={() => handleSlotClick(slot)}
                   >
+                    <span className="font-medium w-1/4 text-left">{format(parseISO(`2000-01-01T${slot}`), "h:mma")}</span>
                     {booked ? (
-                      <>
-                        <span className="font-medium">{bookingInSlot?.title.substring(0, 15)}{bookingInSlot?.title && bookingInSlot.title.length > 15 ? "..." : ""}</span>
+                      <div className="flex-1 text-center">
+                        <span className="font-medium">{bookingInSlot?.title}</span>
+                        <br />
                         <span className="text-[10px] opacity-80">
                           {format(parseISO(`2000-01-01T${bookingInSlot?.start_time}`), "h:mma")} - {format(parseISO(`2000-01-01T${bookingInSlot?.end_time}`), "h:mma")}
                         </span>
-                      </>
+                      </div>
                     ) : (
-                      <>
-                        {format(parseISO(`2000-01-01T${slot}`), "h:mma")}
-                        <Plus className="h-4 w-4 mx-auto mt-1 text-gray-400" />
-                      </>
+                      <div className="flex-1 flex justify-center items-center">
+                        <Plus className="h-5 w-5 text-gray-400" />
+                      </div>
                     )}
                   </div>
                 );
@@ -210,7 +237,7 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
             )}
           </div>
         </div>
-        <DialogFooter className="pt-4">
+        <DialogFooter className="p-6 pt-4"> {/* Added padding back to footer */}
           <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
         </DialogFooter>
       </DialogContent>
