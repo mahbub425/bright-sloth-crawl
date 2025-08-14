@@ -1,4 +1,3 @@
-/// <reference lib="deno.ns" />
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { addDays, addWeeks, addMonths, format, getDay, getDate, getWeekOfMonth, isBefore, parseISO } from 'https://esm.sh/date-fns@3.6.0';
@@ -53,6 +52,32 @@ serve(async (req) => {
       }
 
       if (shouldBook) {
+        const proposedBookingDate = format(currentDate, 'yyyy-MM-dd');
+        const proposedBookingStartTime = initialBooking.start_time;
+        const proposedBookingEndTime = initialBooking.end_time;
+
+        console.log(`Checking for conflicts for proposed booking: Room ${initialBooking.room_id}, Date ${proposedBookingDate}, Time ${proposedBookingStartTime}-${proposedBookingEndTime}`);
+
+        // Check for conflicts for the proposed repeated booking
+        const { data: conflicts, error: conflictError } = await supabaseClient
+            .from('bookings')
+            .select('id')
+            .eq('room_id', initialBooking.room_id)
+            .eq('date', proposedBookingDate)
+            .filter('start_time', 'lt', proposedBookingEndTime)
+            .filter('end_time', 'gt', proposedBookingStartTime)
+            .neq('id', initialBooking.id); // Exclude the initial booking itself from conflict check
+
+        if (conflictError) {
+            console.error(`Error checking conflict for ${proposedBookingDate}:`, conflictError.message);
+            shouldBook = false; // Skip this booking due to error
+        } else if (conflicts && conflicts.length > 0) {
+            console.warn(`Skipping repeated booking for ${proposedBookingDate} due to conflict. Existing booking IDs: ${conflicts.map(c => c.id).join(', ')}`);
+            shouldBook = false; // Skip this booking due to conflict
+        }
+      }
+
+      if (shouldBook) {
         bookingsToInsert.push({
           user_id: userId,
           room_id: initialBooking.room_id,
@@ -62,6 +87,9 @@ serve(async (req) => {
           end_time: initialBooking.end_time,
           remarks: initialBooking.remarks,
         });
+        console.log(`Added booking for ${format(currentDate, 'yyyy-MM-dd')}`);
+      } else {
+        console.log(`Skipped booking for ${format(currentDate, 'yyyy-MM-dd')}`);
       }
 
       // Move to the next date based on repeat type
@@ -93,6 +121,7 @@ serve(async (req) => {
 
 
     if (filteredBookingsToInsert.length > 0) {
+      console.log(`Attempting to insert ${filteredBookingsToInsert.length} repeated bookings.`);
       const { error: insertError } = await supabaseClient
         .from('bookings')
         .insert(filteredBookingsToInsert);
@@ -104,6 +133,9 @@ serve(async (req) => {
           status: 500,
         });
       }
+      console.log(`Successfully inserted ${filteredBookingsToInsert.length} repeated bookings.`);
+    } else {
+      console.log("No additional repeated bookings to insert after filtering.");
     }
 
     return new Response(JSON.stringify({ message: 'Repeated bookings generated successfully.', count: filteredBookingsToInsert.length }), {
