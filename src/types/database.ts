@@ -34,7 +34,7 @@ export interface UserProfile {
   name: string | null;
   pin: string | null;
   phone: string | null;
-  email: string | null; // Ensure email is included
+  email: string | null;
   department: string | null;
   designation: string | null;
   role: 'user' | 'admin';

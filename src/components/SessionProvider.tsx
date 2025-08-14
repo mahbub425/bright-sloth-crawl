@@ -23,7 +23,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const handleAuthStateChange = async (_event: string, currentSession: Session | null) => {
       setSession(currentSession);
 
-      let userRole: 'user' | 'admin' | null = null;
+      let userRole = 'user'; // Default role
       if (currentSession) {
         const { data: profile, error } = await supabase
           .from('profiles')
@@ -35,8 +35,20 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
           userRole = profile.role;
         }
       }
-      
-      setIsAdmin(userRole === 'admin');
+
+      // Check for custom admin session (for the hardcoded admin)
+      const storedAdminSession = localStorage.getItem('admin_session');
+      let currentIsAdmin = false;
+      if (storedAdminSession) {
+        const adminSessionData = JSON.parse(storedAdminSession);
+        if (adminSessionData.expires_at > Date.now() && adminSessionData.role === 'admin') {
+          currentIsAdmin = true;
+        } else {
+          localStorage.removeItem('admin_session'); // Clear expired admin session
+        }
+      }
+      setIsAdmin(currentIsAdmin || userRole === 'admin'); // Admin if either custom admin or user with 'admin' role
+
       setIsLoading(false);
 
       const publicRoutes = ["/login", "/register", "/forgot-password", "/reset-password"];
@@ -47,21 +59,33 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (currentSession) {
         // User is logged in (Supabase auth)
         if (userRole === 'admin') {
-          if (!isAdminRoute) { // If admin is logged in but not on an admin route
-            navigate("/admin-dashboard");
+          // If a regular user tries to access admin routes, redirect them to their dashboard
+          if (isAdminRoute && !currentIsAdmin) { // If it's an admin route but not the custom admin
+             navigate("/"); // Redirect to user dashboard
+          } else if (isPublicRoute && !isAdminRoute) {
+            navigate("/"); // Redirect regular users from public routes
           }
         } else { // Regular user
-          if (isAdminRoute) { // Regular users cannot access admin routes
-            navigate("/");
-          } else if (isPublicRoute) { // Redirect regular users from public routes
-            navigate("/");
+          if (isAdminRoute) {
+            navigate("/"); // Regular users cannot access admin routes
+          } else if (isPublicRoute) {
+            navigate("/"); // Redirect regular users from public routes
           }
         }
       } else {
         // User is not logged in (Supabase auth)
-        if (!isPublicRoute && !isAdminRoute) { // If trying to access protected routes
-          navigate("/login");
+        if (!isPublicRoute && !isAdminRoute) {
+          navigate("/login"); // Redirect to login if trying to access protected routes
         }
+      }
+
+      // Handle custom admin session redirection
+      if (currentIsAdmin) {
+        if (!isAdminRoute && !isPublicRoute) { // If admin is logged in but not on an admin route or public route
+          navigate("/admin-dashboard");
+        }
+      } else if (isAdminRoute && location.pathname !== "/admin") { // If on an admin dashboard route but not logged in as custom admin
+        navigate("/admin");
       }
     };
 
