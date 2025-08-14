@@ -133,22 +133,35 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0"> {/* Removed padding and added p-0 */}
-        <DialogHeader className="p-6 pb-4"> {/* Added padding back to header */}
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0">
+        <DialogHeader className="p-6 pb-4">
           <DialogTitle className="text-center">{room.name}</DialogTitle>
         </DialogHeader>
 
         {/* Room Image */}
         {room.image && (
-          <div className="mb-4 px-6"> {/* Added horizontal padding */}
+          <div className="mb-4 px-6 border-b border-gray-200 dark:border-gray-700 pb-4">
             <img src={room.image} alt={room.name} className="w-full h-48 object-cover rounded-md" />
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 text-white rounded-b-md">
-              <p className="text-sm font-semibold">Capacity {room.capacity}, {room.facilities}</p>
-            </div>
           </div>
         )}
 
-        {/* Date Range Display (as per screenshot) */}
+        {/* Room Details (Capacity, Facilities) - Moved below image */}
+        <div className="px-6 mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="flex items-center text-gray-700 dark:text-gray-300">
+            <Users className="h-5 w-5 mr-2 text-blue-500" />
+            <span className="font-semibold">Capacity:</span> {room.capacity || "N/A"}
+          </div>
+          <div className="flex items-center text-gray-700 dark:text-gray-300">
+            <Clock className="h-5 w-5 mr-2 text-green-500" />
+            <span className="font-semibold">Available:</span> {room.available_time ? `${room.available_time.start} - ${room.available_time.end}` : "24 hours"}
+          </div>
+          <div className="col-span-full flex items-start text-gray-700 dark:text-gray-300">
+            <Info className="h-5 w-5 mr-2 text-purple-500 flex-shrink-0 mt-1" />
+            <span className="font-semibold">Facilities:</span> {room.facilities || "N/A"}
+          </div>
+        </div>
+
+        {/* Date Range Display */}
         <div className="px-6 mb-4 flex items-center justify-center text-gray-700 dark:text-gray-300">
           <span className="font-semibold">{format(currentWeekDates[0], "MMM dd, yyyy")}</span>
           <span className="mx-2">-</span>
@@ -156,7 +169,7 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
         </div>
 
         {/* Custom Date Selector */}
-        <div className="px-6 mb-6"> {/* Added horizontal padding */}
+        <div className="px-6 mb-6">
           <div className="grid grid-cols-7 text-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {currentWeekDates.map((date) => (
               <span key={`day-name-${format(date, 'yyyy-MM-dd')}`}>{format(date, "EEE")}</span>
@@ -195,9 +208,9 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
         </div>
 
         {/* Time Slots */}
-        <div className="flex-1 overflow-y-auto px-6 pb-4"> {/* Only this section scrolls */}
+        <div className="flex-1 overflow-y-auto px-6 pb-4">
           <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">Time Slots for {selectedDate ? format(selectedDate, "PPP") : "Selected Date"}</h3>
-          <div className="grid grid-cols-1 gap-2"> {/* Changed to single column for time slots */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-60 overflow-y-auto pr-2">
             {timeSlots.length > 0 ? (
               timeSlots.map((slot) => {
                 const booked = isSlotBooked(slot);
@@ -207,27 +220,26 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
                   <div
                     key={slot}
                     className={cn(
-                      "p-2 rounded-md text-center text-sm cursor-pointer transition-colors flex justify-between items-center min-h-[60px] border border-gray-200 dark:border-gray-700",
+                      "p-2 rounded-md text-center text-sm cursor-pointer transition-colors flex flex-col justify-center items-center min-h-[60px]",
                       booked
-                        ? "text-white" // Text color for booked slots
+                        ? "text-white"
                         : "bg-gray-50 dark:bg-gray-700/20 hover:bg-gray-100 dark:hover:bg-gray-700/40 text-gray-700 dark:text-gray-300"
                     )}
-                    style={booked ? { backgroundColor: room.color || "#888" } : {}} // Apply room color for booked slots
+                    style={booked ? { backgroundColor: room.color || "#888" } : {}}
                     onClick={() => handleSlotClick(slot)}
                   >
-                    <span className="font-medium w-1/4 text-left">{format(parseISO(`2000-01-01T${slot}`), "h:mma")}</span>
                     {booked ? (
-                      <div className="flex-1 text-center">
-                        <span className="font-medium">{bookingInSlot?.title}</span>
-                        <br />
+                      <>
+                        <span className="font-medium">{bookingInSlot?.title.substring(0, 15)}{bookingInSlot?.title && bookingInSlot.title.length > 15 ? "..." : ""}</span>
                         <span className="text-[10px] opacity-80">
                           {format(parseISO(`2000-01-01T${bookingInSlot?.start_time}`), "h:mma")} - {format(parseISO(`2000-01-01T${bookingInSlot?.end_time}`), "h:mma")}
                         </span>
-                      </div>
+                      </>
                     ) : (
-                      <div className="flex-1 flex justify-center items-center">
-                        <Plus className="h-5 w-5 text-gray-400" />
-                      </div>
+                      <>
+                        {format(parseISO(`2000-01-01T${slot}`), "h:mma")}
+                        <Plus className="h-4 w-4 mx-auto mt-1 text-gray-400" />
+                      </>
                     )}
                   </div>
                 );
@@ -237,8 +249,8 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
             )}
           </div>
         </div>
-        <DialogFooter className="p-6 pt-4"> {/* Added padding back to footer */}
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+        <DialogFooter className="pt-4">
+          {/* Removed Close button as per request */}
         </DialogFooter>
       </DialogContent>
     </Dialog>
