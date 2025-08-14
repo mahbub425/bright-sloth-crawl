@@ -43,6 +43,8 @@ const UserDashboard = () => {
   const [weeklyRoomDetailsOpen, setWeeklyRoomDetailsOpen] = useState(false);
   const [selectedRoomForWeeklyDetails, setSelectedRoomForWeeklyDetails] = useState<Room | null>(null);
   const [selectedDateForWeeklyDetails, setSelectedDateForWeeklyDetails] = useState<Date | undefined>(undefined);
+  const [newBookingStartTime, setNewBookingStartTime] = useState<string | undefined>(undefined); // New state
+  const [newBookingEndTime, setNewBookingEndTime] = useState<string | undefined>(undefined);     // New state
 
 
   useEffect(() => {
@@ -216,6 +218,8 @@ const UserDashboard = () => {
     if (room) {
       setSelectedRoomForBooking(room);
       setEditingBooking(null); // Ensure we are in create mode
+      setNewBookingStartTime(startTime); // Store for new booking
+      setNewBookingEndTime(endTime);     // Store for new booking
       setBookingFormOpen(true);
       setSelectedDate(date); // Ensure the form opens with the correct date
     }
@@ -380,8 +384,8 @@ const UserDashboard = () => {
           onOpenChange={setBookingFormOpen}
           room={selectedRoomForBooking}
           selectedDate={selectedDate || new Date()}
-          initialStartTime={editingBooking?.start_time.substring(0,5) || undefined}
-          initialEndTime={editingBooking?.end_time.substring(0,5) || undefined}
+          initialStartTime={editingBooking ? editingBooking.start_time.substring(0,5) : newBookingStartTime}
+          initialEndTime={editingBooking ? editingBooking.end_time.substring(0,5) : newBookingEndTime}
           existingBooking={editingBooking}
           onBookingSuccess={handleBookingOperationSuccess}
           userId={session.user.id}
