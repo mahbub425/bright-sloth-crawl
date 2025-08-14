@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { format, parseISO, addMinutes, isBefore, isAfter, startOfDay, endOfDay, isSameDay } from "date-fns";
-import { CalendarIcon, Clock, Users, Info, Image as ImageIcon, Plus } from "lucide-react"; // Added Plus import
+import { format, parseISO, addMinutes, isBefore, isAfter, isSameDay } from "date-fns";
+import { CalendarIcon, Clock, Users, Info, Image as ImageIcon, Plus } from "lucide-react";
 import { Room, Booking } from "@/types/database";
 import { supabase } from "@/integrations/supabase/auth";
 import { useToast } from "@/components/ui/use-toast";
@@ -22,7 +22,7 @@ const generateTimeOptions = (start: string, end: string, intervalMinutes: number
   let currentTime = parseISO(`2000-01-01T${start}:00`);
   const endTime = parseISO(`2000-01-01T${end}:00`);
 
-  while (isBefore(currentTime, endTime)) {
+  while (isBefore(currentTime, endTime) || isSameDay(currentTime, endTime)) {
     options.push(format(currentTime, "HH:mm"));
     currentTime = addMinutes(currentTime, intervalMinutes);
   }
@@ -115,11 +115,10 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
       onBookSlot(room.id, selectedDate, startTime, endTime);
       onOpenChange(false); // Close this dialog after initiating booking
     } else {
-      // Optionally, show details of the booked slot if needed, or do nothing
       toast({
         title: "Slot Booked",
         description: "This time slot is already booked.",
-        variant: "default", // Changed from "info" to "default"
+        variant: "default",
       });
     }
   };
@@ -135,58 +134,64 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
           <DialogTitle>{room.name} Details</DialogTitle>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto pr-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            {room.image && (
-              <div className="col-span-full md:col-span-1">
-                <img src={room.image} alt={room.name} className="w-full h-48 object-cover rounded-md" />
-              </div>
-            )}
-            <div className="col-span-full md:col-span-1 flex flex-col justify-center">
-              <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
-                <Users className="h-4 w-4 mr-2" /> Capacity: {room.capacity || "N/A"}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center mt-2">
-                <Info className="h-4 w-4 mr-2" /> Facilities: {room.facilities || "N/A"}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center mt-2">
-                <Clock className="h-4 w-4 mr-2" /> Available: {room.available_time ? `${room.available_time.start} - ${room.available_time.end}` : "24 hours"}
-              </p>
+          {/* Room Image */}
+          {room.image && (
+            <div className="mb-4">
+              <img src={room.image} alt={room.name} className="w-full h-48 object-cover rounded-md" />
+            </div>
+          )}
+
+          {/* Room Details */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <div className="flex items-center text-gray-700 dark:text-gray-300">
+              <Users className="h-5 w-5 mr-2 text-blue-500" />
+              <span className="font-semibold">Capacity:</span> {room.capacity || "N/A"}
+            </div>
+            <div className="flex items-center text-gray-700 dark:text-gray-300">
+              <Clock className="h-5 w-5 mr-2 text-green-500" />
+              <span className="font-semibold">Available:</span> {room.available_time ? `${room.available_time.start} - ${room.available_time.end}` : "24 hours"}
+            </div>
+            <div className="col-span-full flex items-start text-gray-700 dark:text-gray-300">
+              <Info className="h-5 w-5 mr-2 text-purple-500 flex-shrink-0 mt-1" />
+              <span className="font-semibold">Facilities:</span> {room.facilities || "N/A"}
             </div>
           </div>
 
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold mb-2">Select Date</h3>
+          {/* Calendar for Date Selection */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">Select Date</h3>
             <Calendar
               mode="single"
               selected={selectedDate}
               onSelect={setSelectedDate}
-              className="rounded-md border shadow mx-auto"
+              className="rounded-md border shadow mx-auto bg-white dark:bg-gray-800"
               numberOfMonths={1}
             />
           </div>
 
-          <h3 className="text-lg font-semibold mb-2">Time Slots for {selectedDate ? format(selectedDate, "PPP") : "Selected Date"}</h3>
+          {/* Time Slots */}
+          <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">Time Slots for {selectedDate ? format(selectedDate, "PPP") : "Selected Date"}</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-60 overflow-y-auto pr-2">
             {timeSlots.length > 0 ? (
               timeSlots.map((slot) => {
                 const booked = isSlotBooked(slot);
                 const bookingInSlot = getBookingInSlot(slot);
-                const cellClasses = cn(
-                  "p-2 rounded-md text-center text-sm cursor-pointer transition-colors",
-                  booked
-                    ? "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200"
-                    : "bg-gray-50 dark:bg-gray-700/20 hover:bg-gray-100 dark:hover:bg-gray-700/40"
-                );
+                
                 return (
                   <div
                     key={slot}
-                    className={cellClasses}
+                    className={cn(
+                      "p-2 rounded-md text-center text-sm cursor-pointer transition-colors flex flex-col justify-center items-center min-h-[60px]",
+                      booked
+                        ? "text-white" // Text color for booked slots
+                        : "bg-gray-50 dark:bg-gray-700/20 hover:bg-gray-100 dark:hover:bg-gray-700/40 text-gray-700 dark:text-gray-300"
+                    )}
+                    style={booked ? { backgroundColor: room.color || "#888" } : {}} // Apply room color for booked slots
                     onClick={() => handleSlotClick(slot)}
                   >
                     {booked ? (
                       <>
                         <span className="font-medium">{bookingInSlot?.title.substring(0, 15)}{bookingInSlot?.title && bookingInSlot.title.length > 15 ? "..." : ""}</span>
-                        <br />
                         <span className="text-[10px] opacity-80">
                           {format(parseISO(`2000-01-01T${bookingInSlot?.start_time}`), "h:mma")} - {format(parseISO(`2000-01-01T${bookingInSlot?.end_time}`), "h:mma")}
                         </span>
