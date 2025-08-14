@@ -71,13 +71,7 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
 
   return (
     <div className="overflow-x-auto">
-      <div className="mb-4 flex justify-between items-end">
-        <div>
-          <h2 className="text-2xl font-bold">Daily Schedule</h2>
-          <p className="text-lg text-gray-600 dark:text-gray-400">
-            {selectedDate ? format(selectedDate, "EEEE, MMMM dd, yyyy") : "Selected Date"}
-          </p>
-        </div>
+      <div className="mb-4 flex justify-end items-end"> {/* Adjusted to justify-end */}
         <div className="flex space-x-2">
           <Button
             variant="outline"
