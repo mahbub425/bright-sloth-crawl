@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { Room, Booking } from "@/types/database";
 import { format, parseISO, addMinutes, isBefore, isAfter, differenceInMinutes } from "date-fns";
-import { Plus } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button"; // Assuming Button component is available
 
 interface DailyScheduleGridProps {
   rooms: Room[];
@@ -41,8 +42,26 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
   onBookSlot,
   onViewBooking,
 }) => {
-  const detailedTimeSlots = generateDetailedTimeSlots(); // 30-minute intervals
-  const hourlyLabels = generateHourlyLabels(); // Hourly labels for the header
+  const allDetailedTimeSlots = generateDetailedTimeSlots(); // 30-minute intervals for grid cells (48 slots)
+  const allHourlyLabels = generateHourlyLabels(); // Hourly labels for the header (24 labels)
+
+  // State to control the visible 6-hour window (index refers to the start of 30-min slots)
+  // 0 = 00:00, 12 = 06:00, 24 = 12:00, 36 = 18:00
+  const [visibleTimeStartIndex, setVisibleTimeStartIndex] = useState(18); // Start at 9 AM (index 18 for 09:00)
+
+  // Calculate the visible 30-minute slots (12 slots for 6 hours)
+  const visibleDetailedTimeSlots = allDetailedTimeSlots.slice(visibleTimeStartIndex, visibleTimeStartIndex + 12);
+  // Calculate the visible hourly labels (6 labels for 6 hours)
+  const visibleHourlyLabels = allHourlyLabels.slice(visibleTimeStartIndex / 2, (visibleTimeStartIndex / 2) + 6);
+
+  const handlePrevTimeRange = () => {
+    setVisibleTimeStartIndex(prev => Math.max(0, prev - 12)); // Move back 6 hours (12 x 30-min slots)
+  };
+
+  const handleNextTimeRange = () => {
+    const maxStartIndex = allDetailedTimeSlots.length - 12; // Max index to show last 6 hours
+    setVisibleTimeStartIndex(prev => Math.min(maxStartIndex, prev + 12)); // Move forward 6 hours
+  };
 
   const getBookingsForRoomAndDate = (roomId: string, date: Date) => {
     return bookings.filter(booking =>
@@ -51,10 +70,32 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
   };
 
   return (
-    <div className="overflow-x-auto">
-      <div className="grid grid-flow-col auto-cols-max min-w-full border border-gray-200 dark:border-gray-700 rounded-lg shadow-md bg-white dark:bg-gray-800">
-        {/* Room Header Column */}
-        <div className="grid grid-rows-1 auto-rows-min sticky left-0 z-10 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+    <div className="overflow-hidden"> {/* Changed to overflow-hidden as arrows control scroll */}
+      <div className="flex items-center justify-between mb-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handlePrevTimeRange}
+          disabled={visibleTimeStartIndex === 0}
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </Button>
+        <h2 className="text-2xl font-bold text-center">
+          Daily Schedule for {selectedDate ? format(selectedDate, "EEEE, MMMM dd, yyyy") : "Selected Date"}
+        </h2>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleNextTimeRange}
+          disabled={visibleTimeStartIndex >= (allDetailedTimeSlots.length - 12)}
+        >
+          <ChevronRight className="h-5 w-5" />
+        </Button>
+      </div>
+
+      <div className="grid grid-flow-col auto-cols-max min-w-full border border-gray-200 dark:border-gray-700 rounded-lg shadow-md bg-white dark:bg-gray-800 relative">
+        {/* Room Header Column - Sticky */}
+        <div className="grid grid-rows-1 auto-rows-min sticky left-0 z-20 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-md">
           <div className="h-16 flex items-center justify-center p-2 font-semibold text-sm text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
             Rooms / Time
           </div>
@@ -72,11 +113,11 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
           ))}
         </div>
 
-        {/* Main Grid Content */}
-        <div className="grid grid-rows-1 auto-rows-min overflow-x-auto">
+        {/* Main Grid Content - Scrollable */}
+        <div className="grid grid-rows-1 auto-rows-min overflow-x-hidden flex-1"> {/* Changed to overflow-x-hidden */}
           {/* Hourly Time Headers */}
           <div className="grid grid-flow-col auto-cols-[60px] border-b border-gray-200 dark:border-gray-700">
-            {hourlyLabels.map((label, index) => (
+            {visibleHourlyLabels.map((label, index) => (
               <div
                 key={label}
                 className="h-16 flex items-center justify-center p-2 font-semibold text-sm text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 last:border-r-0"
@@ -94,7 +135,7 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
 
             return (
               <div key={room.id} className="grid grid-flow-col auto-cols-[60px] h-24"> {/* Each column is 60px for 30 min */}
-                {detailedTimeSlots.map((slotTime, index) => {
+                {visibleDetailedTimeSlots.map((slotTime, index) => {
                   if (slotsToSkip > 0) {
                     slotsToSkip--;
                     return null; // This slot is covered by a previously rendered booking
@@ -123,7 +164,7 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
                     return (
                       <div
                         key={`${room.id}-${slotTime}`}
-                        className="h-full flex flex-col items-center justify-center p-2 rounded-lg text-white cursor-pointer transition-colors duration-200 overflow-hidden"
+                        className="h-full flex flex-col items-center justify-center p-2 rounded-md text-white cursor-pointer transition-colors duration-200 overflow-hidden"
                         onClick={() => onViewBooking(renderedBooking)}
                         style={{
                           backgroundColor: room.color || "#888",
