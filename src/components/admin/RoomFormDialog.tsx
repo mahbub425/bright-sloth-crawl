@@ -75,7 +75,7 @@ const RoomFormDialog: React.FC<RoomFormDialogProps> = ({ open, onOpenChange, roo
         availableTimeStart: room.available_time?.start || "09:00",
         availableTimeEnd: room.available_time?.end || "17:00",
         color: room.color || generateRandomColor(),
-        imageFile: undefined, // Clear file input on edit, but don't set to null
+        imageFile: undefined, // Clear file input on edit
       });
       setCurrentImageUrl(room.image);
     } else if (open && !room) {
@@ -110,7 +110,7 @@ const RoomFormDialog: React.FC<RoomFormDialogProps> = ({ open, onOpenChange, roo
         // Delete old image if it exists and its path is different from the new one
         if (currentImageUrl) {
           const oldPathInBucket = getPathFromPublicUrl(currentImageUrl);
-          if (oldPathInBucket && oldPathInBucket !== filePathInBucket) {
+          if (oldPathInBucket) { // Only delete if a valid path was extracted
             await deleteImage(oldPathInBucket);
           }
         }
@@ -119,7 +119,7 @@ const RoomFormDialog: React.FC<RoomFormDialogProps> = ({ open, onOpenChange, roo
           .from(BUCKET_NAME)
           .upload(filePathInBucket, file, {
             cacheControl: '3600',
-            upsert: true,
+            // upsert: true, // REMOVED THIS LINE TO AVOID RLS ISSUES
           });
 
         if (uploadError) {
@@ -143,7 +143,7 @@ const RoomFormDialog: React.FC<RoomFormDialogProps> = ({ open, onOpenChange, roo
         capacity: values.capacity,
         facilities: values.facilities,
         available_time: { start: values.availableTimeStart, end: values.availableTimeEnd },
-        image: finalImageUrlForDb,
+        image: finalImageUrlForDb, // Use the final URL directly
         color: values.color,
       };
 
