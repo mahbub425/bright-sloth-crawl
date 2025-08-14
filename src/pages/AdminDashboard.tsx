@@ -16,12 +16,12 @@ import UserManagement from "@/components/admin/UserManagement";
 import BookingList from "@/components/admin/BookingList";
 import RoomManagement from "@/components/admin/RoomManagement"; // New import
 import { DateRange } from "react-day-picker";
+import { useSession } from "@/components/SessionProvider"; // Import useSession
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [adminSession, setAdminSession] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { session, isAdmin, isLoading } = useSession(); // Use useSession hook
   const [activeTab, setActiveTab] = useState("analytics"); // Default tab
 
   // Filter states for Analytics
@@ -33,79 +33,56 @@ const AdminDashboard = () => {
   const [rooms, setRooms] = useState<Room[]>([]);
 
   useEffect(() => {
-    const storedSession = localStorage.getItem('admin_session');
-    if (storedSession) {
-      const sessionData = JSON.parse(storedSession);
-      if (sessionData.expires_at > Date.now()) {
-        setAdminSession(sessionData);
-        fetchAdminPreferences(sessionData.username); // Fetch preferences after session is set
-      } else {
-        localStorage.removeItem('admin_session');
-        navigate("/admin");
-      }
-    } else {
+    if (!isLoading && !isAdmin) {
+      // If not loading and not an admin, redirect to admin login
       navigate("/admin");
     }
-    setIsLoading(false);
-  }, [navigate]);
+  }, [isLoading, isAdmin, navigate]);
 
   useEffect(() => {
-    if (adminSession) {
+    if (session) { // Fetch preferences and rooms only if a session exists
+      fetchAdminPreferences();
       fetchRooms();
     }
-  }, [adminSession]);
+  }, [session]);
 
-  const fetchAdminPreferences = async (adminUsername: string) => {
-    const { data: adminProfile, error: profileError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('role', 'admin')
+  const fetchAdminPreferences = async () => {
+    if (!session?.user?.id) return; // Ensure user ID is available
+
+    const { data: preferences, error } = await supabase
+      .from('admin_preferences')
+      .select('*')
+      .eq('admin_id', session.user.id) // Use session.user.id
       .single();
 
-    if (adminProfile && !profileError) {
-      const { data: preferences, error } = await supabase
-        .from('admin_preferences')
-        .select('*')
-        .eq('admin_id', adminProfile.id)
-        .single();
-
-      if (preferences && !error) {
-        setFilterRoomId(preferences.filter_room_id);
-        setFilterDateRange({
-          from: preferences.filter_date_start ? new Date(preferences.filter_date_start) : subMonths(new Date(), 6),
-          to: preferences.filter_date_end ? new Date(preferences.filter_date_end) : new Date(),
-        });
-      }
+    if (preferences && !error) {
+      setFilterRoomId(preferences.filter_room_id);
+      setFilterDateRange({
+        from: preferences.filter_date_start ? new Date(preferences.filter_date_start) : subMonths(new Date(), 6),
+        to: preferences.filter_date_end ? new Date(preferences.filter_date_end) : new Date(),
+      });
     }
   };
 
   const saveAdminPreference = async () => {
-    if (!adminSession) return;
+    if (!session?.user?.id) return;
 
-    const { data: adminProfile, error: profileError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('role', 'admin')
-      .single();
+    const { error } = await supabase
+      .from('admin_preferences')
+      .upsert({
+        admin_id: session.user.id,
+        filter_room_id: filterRoomId,
+        filter_date_start: filterDateRange.from ? format(filterDateRange.from, "yyyy-MM-dd") : null,
+        filter_date_end: filterDateRange.to ? format(filterDateRange.to, "yyyy-MM-dd") : null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'admin_id' });
 
-    if (adminProfile && !profileError) {
-      const { error } = await supabase
-        .from('admin_preferences')
-        .upsert({
-          admin_id: adminProfile.id,
-          filter_room_id: filterRoomId,
-          filter_date_start: filterDateRange.from ? format(filterDateRange.from, "yyyy-MM-dd") : null,
-          filter_date_end: filterDateRange.to ? format(filterDateRange.to, "yyyy-MM-dd") : null,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'admin_id' });
-
-      if (error) {
-        toast({
-          title: "Error saving admin preferences",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
+    if (error) {
+      toast({
+        title: "Error saving admin preferences",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -126,8 +103,8 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleAdminLogout = () => {
-    localStorage.removeItem('admin_session');
+  const handleAdminLogout = async () => {
+    await supabase.auth.signOut(); // Use Supabase signOut
     toast({
       title: "Logged Out",
       description: "You have been logged out from the admin panel.",
@@ -144,7 +121,7 @@ const AdminDashboard = () => {
     );
   }
 
-  if (!adminSession) {
+  if (!isAdmin) { // Check isAdmin from useSession
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
         <h1 className="text-4xl font-bold mb-4">Admin Access Denied</h1>

@@ -7,11 +7,11 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/components/ui/use-toast"; // Corrected syntax
 import { MadeWithDyad } from "@/components/made-with-dyad";
 
 const formSchema = z.object({
-  username: z.string().min(1, "Username is required"),
+  email: z.string().min(1, "Email is required").email("Invalid email format"),
   password: z.string().min(1, "Password is required"),
 });
 
@@ -23,7 +23,7 @@ const AdminLogin = () => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      username: "",
+      email: "",
       password: "",
     },
   });
@@ -31,45 +31,44 @@ const AdminLogin = () => {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     try {
-      // Fetch admin credentials from the 'admins' table
-      const { data, error } = await supabase
-        .from('admins')
-        .select('username, password')
-        .eq('username', values.username)
-        .single();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: values.email,
+        password: values.password,
+      });
 
-      if (error || !data) {
+      if (error) {
         toast({
           title: "Login Error",
-          description: "Invalid username or password.",
+          description: error.message,
           variant: "destructive",
         });
         return;
       }
 
-      // IMPORTANT SECURITY WARNING:
-      // In a real application, you MUST use a server-side bcrypt comparison here
-      // (e.g., via a Supabase Edge Function) to verify the password hash.
-      // Comparing plaintext passwords or using a client-side bcrypt library is INSECURE.
-      // This direct comparison is for demonstration purposes ONLY.
-      if (values.password === "123456" && values.username === "admin") { // Simulating the hardcoded check
-        // For a real app, you'd verify against the hashed password from 'data.password'
-        // e.g., await bcrypt.compare(values.password, data.password)
-        
-        // Simulate admin session (no actual Supabase auth session for this custom admin)
-        localStorage.setItem('admin_session', JSON.stringify({ username: values.username, role: 'admin', expires_at: Date.now() + 3600 * 1000 })); // 1 hour expiry
+      if (data.user) {
+        // Check if the authenticated user has the 'admin' role in profiles table
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profileError || profile?.role !== 'admin') {
+          // If not an admin, sign them out and show error
+          await supabase.auth.signOut();
+          toast({
+            title: "Access Denied",
+            description: "You do not have administrative privileges.",
+            variant: "destructive",
+          });
+          return;
+        }
 
         toast({
           title: "Login Successful",
-          description: "Welcome, Super Admin!",
+          description: "Welcome, Admin!",
         });
         navigate("/admin-dashboard");
-      } else {
-        toast({
-          title: "Login Error",
-          description: "Invalid username or password.",
-          variant: "destructive",
-        });
       }
     } catch (error: any) {
       toast({
@@ -89,15 +88,15 @@ const AdminLogin = () => {
         <p className="text-center text-gray-600 dark:text-gray-400 mb-6">Enter your admin credentials.</p>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <Label htmlFor="username">Username</Label>
-            <Input id="username" placeholder="admin" type="text" {...form.register("username")} />
-            {form.formState.errors.username && (
-              <p className="text-red-500 text-sm mt-1">{form.formState.errors.username.message}</p>
+            <Label htmlFor="email">Email</Label>
+            <Input id="email" placeholder="admin@example.com" type="email" {...form.register("email")} />
+            {form.formState.errors.email && (
+              <p className="text-red-500 text-sm mt-1">{form.formState.errors.email.message}</p>
             )}
           </div>
           <div>
             <Label htmlFor="password">Password</Label>
-            <Input id="password" placeholder="123456" type="password" {...form.register("password")} />
+            <Input id="password" placeholder="********" type="password" {...form.register("password")} />
             {form.formState.errors.password && (
               <p className="text-red-500 text-sm mt-1">{form.formState.errors.password.message}</p>
             )}
