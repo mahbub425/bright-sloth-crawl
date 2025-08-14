@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "profiles_select_policy" ON public.profiles;
