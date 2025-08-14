@@ -38,7 +38,7 @@ const WeeklyScheduleGrid: React.FC<WeeklyScheduleGridProps> = ({
   };
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto"> {/* Keep overflow-x-auto for the outer container in case of very small screens, but grid itself will try to fit */}
       <div className="mb-4 flex justify-between items-end">
         <div>
           <h2 className="text-2xl font-bold">Weekly Schedule</h2>
@@ -64,8 +64,8 @@ const WeeklyScheduleGrid: React.FC<WeeklyScheduleGridProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-flow-col auto-cols-max min-w-full border border-gray-200 dark:border-gray-700 rounded-lg shadow-md bg-white dark:bg-gray-800">
-        {/* Header Row: Rooms / Dates */}
+      <div className="grid grid-cols-[auto_1fr] min-w-full border border-gray-200 dark:border-gray-700 rounded-lg shadow-md bg-white dark:bg-gray-800">
+        {/* Room Header Column - Sticky */}
         <div className="grid grid-rows-1 auto-rows-min sticky left-0 z-10 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
           <div className="h-16 flex items-center justify-center p-2 font-semibold text-sm text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
             Rooms / Date
@@ -85,8 +85,8 @@ const WeeklyScheduleGrid: React.FC<WeeklyScheduleGridProps> = ({
         </div>
 
         {/* Main Grid: Dates and Bookings */}
-        <div className="grid grid-rows-1 auto-rows-min overflow-x-auto">
-          <div className="grid grid-flow-col auto-cols-[120px] border-b border-gray-200 dark:border-gray-700">
+        <div className="grid grid-rows-1 auto-rows-min overflow-x-hidden flex-1">
+          <div className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700"> {/* Changed to grid-cols-7 */}
             {weekDates.map((date) => (
               <div
                 key={format(date, "yyyy-MM-dd")}
@@ -99,7 +99,7 @@ const WeeklyScheduleGrid: React.FC<WeeklyScheduleGridProps> = ({
           </div>
 
           {rooms.map((room) => (
-            <div key={room.id} className="grid grid-flow-col auto-cols-[120px]">
+            <div key={room.id} className="grid grid-cols-7"> {/* Changed to grid-cols-7 */}
               {weekDates.map((date) => {
                 const dailyBookings = getBookingsForRoomAndDate(room.id, date);
                 const cellClasses = cn(
