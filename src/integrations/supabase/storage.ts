@@ -1,6 +1,6 @@
 import { supabase } from "./client";
 
-const BUCKET_NAME = "room_images"; // Define a bucket for room images
+export const BUCKET_NAME = "room_images"; // Define a bucket for room images
 
 export const uploadImage = async (file: File, path: string) => {
   const { data, error } = await supabase.storage

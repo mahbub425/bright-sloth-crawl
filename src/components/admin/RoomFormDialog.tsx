@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/auth";
-import { uploadImage, deleteImage, getPathFromPublicUrl, getPublicImageUrl } from "@/integrations/supabase/storage";
+import { deleteImage, getPathFromPublicUrl, getPublicImageUrl, BUCKET_NAME } from "@/integrations/supabase/storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -103,15 +103,28 @@ const RoomFormDialog: React.FC<RoomFormDialogProps> = ({ open, onOpenChange, roo
         const file = values.imageFile[0];
         const fileExtension = file.name.split('.').pop();
         const fileName = `${room?.id || crypto.randomUUID()}.${fileExtension}`;
-        const filePath = `public/${fileName}`;
+        const filePath = `public/${fileName}`; // Path within the bucket
 
-        // Delete old image if exists and is different
-        if (currentImageUrl && getPathFromPublicUrl(currentImageUrl) !== filePath) {
-          await deleteImage(getPathFromPublicUrl(currentImageUrl)!);
+        // Always delete the old image if one exists
+        if (currentImageUrl) {
+          const oldImagePathInBucket = getPathFromPublicUrl(currentImageUrl);
+          if (oldImagePathInBucket) {
+            await deleteImage(oldImagePathInBucket); // This calls supabase.storage.from(BUCKET_NAME).remove([path])
+          }
         }
 
-        const uploadResult = await uploadImage(file, filePath);
-        imagePath = uploadResult.path;
+        // Upload the new image without upsert: true
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from(BUCKET_NAME) // Use the exported BUCKET_NAME
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false, // Explicitly set to false
+          });
+
+        if (uploadError) {
+          throw uploadError;
+        }
+        imagePath = getPublicImageUrl(uploadData.path); // Get public URL from the path returned by upload
       } else if (values.imageFile === null && currentImageUrl) {
         // User explicitly removed image (e.g., cleared input)
         await deleteImage(getPathFromPublicUrl(currentImageUrl)!);
