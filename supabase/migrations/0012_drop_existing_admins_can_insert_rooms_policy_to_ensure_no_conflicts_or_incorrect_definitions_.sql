@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Admins can insert rooms" ON public.rooms;
