@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/auth";
 import { useToast } from "@/components/ui/use-toast";
 import { Booking, Room } from "@/types/database";
@@ -11,7 +11,7 @@ import { Search, Eye, Edit, Trash2, CalendarIcon } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { format, subMonths, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns"; // Removed subMonths
 import { cn } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
 import BookingDetailsDialog from "@/components/BookingDetailsDialog";
@@ -244,7 +244,7 @@ const BookingList = () => {
                 mode="range"
                 defaultMonth={filterDateRange.from || new Date()}
                 selected={filterDateRange}
-                onSelect={setFilterDateRange}
+                onSelect={(range: DateRange | undefined) => setFilterDateRange(range || { from: undefined, to: undefined })}
                 numberOfMonths={2}
               />
             </PopoverContent>

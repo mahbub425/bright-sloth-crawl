@@ -1,22 +1,17 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { supabase } from "@/integrations/supabase/auth";
 import { useToast } from "@/components/ui/use-toast";
-import { CalendarIcon, Users, ListChecks, BarChart3, Home } from "lucide-react"; // Added Home icon
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { Users, ListChecks, BarChart3, Home } from "lucide-react"; // Removed CalendarIcon
 import { format, subMonths } from "date-fns";
-import { cn } from "@/lib/utils";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Room, AdminPreference } from "@/types/database";
+import { DateRange } from "react-day-picker";
+import { useSession } from "@/components/SessionProvider";
 import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
 import UserManagement from "@/components/admin/UserManagement";
 import BookingList from "@/components/admin/BookingList";
 import RoomManagement from "@/components/admin/RoomManagement"; // New import
-import { DateRange } from "react-day-picker";
-import { useSession } from "@/components/SessionProvider"; // Import useSession
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -182,7 +177,7 @@ const AdminDashboard = () => {
               filterRoomId={filterRoomId}
               setFilterRoomId={setFilterRoomId}
               filterDateRange={filterDateRange}
-              setFilterDateRange={setFilterDateRange}
+              setFilterDateRange={(range) => setFilterDateRange(range || { from: undefined, to: undefined })}
               rooms={rooms}
               saveAdminPreference={saveAdminPreference}
             />

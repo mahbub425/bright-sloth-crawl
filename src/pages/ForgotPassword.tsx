@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { MadeWithDyad } from "@/components/made-with-dyad";
-import { Mail, Lock } from "lucide-react";
+import { Mail } from "lucide-react"; // Removed Lock
 
 const formSchema = z.object({
   emailOrPin: z.string().min(1, "Email or PIN is required"),

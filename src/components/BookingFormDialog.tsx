@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format, parseISO, isBefore, isAfter, addMinutes, isSameDay } from "date-fns";
+import { format, parseISO, isBefore, addMinutes, isSameDay } from "date-fns"; // Removed isAfter
 import { CalendarIcon, Clock, Text, Repeat, Info } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Room, Booking } from "@/types/database";
@@ -232,8 +232,6 @@ const BookingFormDialog: React.FC<BookingFormDialogProps> = ({
 
         // If it's a repeating booking, call the Edge Function
         if (values.repeatType !== "no_repeat" && data) {
-          const edgeFunctionUrl = `https://lusmncqulwpcaquprcls.supabase.co/functions/v1/generate-repeated-bookings`;
-          
           const { data: edgeFunctionData, error: edgeFunctionError } = await supabase.functions.invoke(
             'generate-repeated-bookings',
             {
@@ -410,7 +408,7 @@ const BookingFormDialog: React.FC<BookingFormDialogProps> = ({
                         )}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {form.watch("endDate") ? format(form.watch("endDate"), "PPP") : <span>Pick end date (Optional)</span>}
+                        {form.watch("endDate") ? format(form.watch("endDate")!, "PPP") : <span>Pick end date (Optional)</span>}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">

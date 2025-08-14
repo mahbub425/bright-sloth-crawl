@@ -2,19 +2,10 @@ import React, { useState } from "react";
 import { Room, Booking } from "@/types/database";
 import { format, parseISO, addMinutes, isBefore, isAfter, differenceInMinutes, isSameDay } from "date-fns";
 import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-interface DailyScheduleGridProps {
-  rooms: Room[];
-  bookings: Booking[];
-  selectedDate: Date;
-  onBookSlot: (roomId: string, date: Date, startTime: string, endTime: string) => void;
-  onViewBooking: (booking: Booking) => void;
-}
-
 // Generates 30-minute time slots for the entire day (e.g., "00:00", "00:30", ..., "23:30")
-const generateDetailedTimeSlots = (intervalMinutes: number = 30) => {
+const generateDetailedTimeSlots = () => {
   const slots = [];
   let currentTime = parseISO(`2000-01-01T00:00:00`);
   const endTime = parseISO(`2000-01-01T23:59:00`); // Up to 23:30
@@ -117,7 +108,7 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
         <div className="flex-1 overflow-x-hidden">
           {/* Hourly Time Headers */}
           <div className="grid grid-cols-12 border-b border-gray-200 dark:border-gray-700">
-            {visibleHourlyLabels.map((label, index) => (
+            {visibleHourlyLabels.map((label, _index) => (
               <div
                 key={label}
                 className="h-16 flex items-center justify-center p-2 font-semibold text-sm text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700 last:border-r-0"
@@ -135,7 +126,7 @@ const DailyScheduleGrid: React.FC<DailyScheduleGridProps> = ({
 
             return (
               <div key={room.id} className="grid grid-cols-12 h-24"> {/* Now 12 columns, stretching */}
-                {visibleDetailedTimeSlots.map((slotTime, index) => {
+                {visibleDetailedTimeSlots.map((slotTime, _index) => {
                   if (slotsToSkip > 0) {
                     slotsToSkip--;
                     return null; // This slot is covered by a previously rendered booking

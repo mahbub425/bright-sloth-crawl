@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/auth";
 import { useToast } from "@/components/ui/use-toast";
-import { Room, Booking, UserProfile } from "@/types/database";
+import { Room, Booking } from "@/types/database";
 import AnalyticsFilters from "./AnalyticsFilters";
 import AnalyticsCards from "./AnalyticsCards";
 import BookingsByRoomChart from "./BookingsByRoomChart";

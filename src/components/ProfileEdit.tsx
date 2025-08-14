@@ -64,7 +64,7 @@ const ProfileEdit: React.FC<ProfileEditProps> = ({ profile, onProfileUpdated }) 
     try {
       // Check for unique email if it's changed
       if (values.email !== profile.email) {
-        const { data: existingEmail, error: emailError } = await supabase
+        const { data: existingEmail } = await supabase
           .from('profiles')
           .select('id')
           .eq('email', values.email)

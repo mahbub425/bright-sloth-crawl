@@ -1,6 +1,6 @@
 import React from "react";
 import { Room, Booking } from "@/types/database";
-import { format, addDays, subDays, isSameDay, parseISO, getDay } from "date-fns"; // Added getDay
+import { format, addDays, subDays, parseISO, getDay } from "date-fns"; // Removed isSameDay
 import { cn } from "@/lib/utils";
 import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,9 +9,9 @@ interface WeeklyScheduleGridProps {
   rooms: Room[];
   bookings: Booking[];
   selectedDate: Date;
-  onViewRoomDetails: (room: Room, date: Date) => void;
-  onSelectDate: (date: Date) => void; // New prop to update the selected date in parent
-  onViewBooking: (booking: Booking) => void; // New prop to view booking details
+  onViewRoomDetails: (room: Room, date: Date, dailyBookings: Booking[]) => void; // Updated signature
+  onSelectDate: (date: Date) => void;
+  onViewBooking: (booking: Booking) => void;
 }
 
 const WeeklyScheduleGrid: React.FC<WeeklyScheduleGridProps> = ({
@@ -20,7 +20,7 @@ const WeeklyScheduleGrid: React.FC<WeeklyScheduleGridProps> = ({
   selectedDate,
   onViewRoomDetails,
   onSelectDate,
-  onViewBooking, // Destructure new prop
+  onViewBooking,
 }) => {
   // Generate 7 days starting from the selectedDate's week start
   const startOfSelectedWeek = addDays(selectedDate, -getDay(selectedDate)); // Adjust to Sunday of the selected week
@@ -118,14 +118,7 @@ const WeeklyScheduleGrid: React.FC<WeeklyScheduleGridProps> = ({
                     key={`${room.id}-${format(date, "yyyy-MM-dd")}`}
                     className={cellClasses}
                     onClick={() => {
-                      if (dailyBookings.length > 0) {
-                        // If there are bookings, view details of the first one (or handle multiple)
-                        // For simplicity, we'll open the WeeklyRoomDetailsDialog to show all for that day
-                        onViewRoomDetails(room, date);
-                      } else {
-                        // If no bookings, allow booking a new slot (handled by WeeklyRoomDetailsDialog)
-                        onViewRoomDetails(room, date);
-                      }
+                      onViewRoomDetails(room, date, dailyBookings); // Pass dailyBookings
                     }}
                   >
                     {dailyBookings.slice(0, 2).map((booking) => (

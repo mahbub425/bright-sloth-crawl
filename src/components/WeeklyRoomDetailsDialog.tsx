@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { format, parseISO, addMinutes, isBefore, isAfter, isSameDay, startOfWeek, addDays, differenceInMinutes } from "date-fns";
 import { Plus } from "lucide-react";
 import { Room, Booking } from "@/types/database";
-import { supabase } from "@/integrations/supabase/auth";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -13,8 +12,9 @@ interface WeeklyRoomDetailsDialogProps {
   onOpenChange: (open: boolean) => void;
   room: Room | null;
   initialDate: Date;
+  dailyBookingsForSelectedRoomAndDate: Booking[]; // New prop
   onBookSlot: (roomId: string, date: Date, startTime: string, endTime: string) => void;
-  onViewBooking: (booking: Booking) => void; // New prop to view booking details
+  onViewBooking: (booking: Booking) => void;
 }
 
 // Helper to generate 30-minute time slots based on room's available time
@@ -68,52 +68,24 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
   onOpenChange,
   room,
   initialDate,
+  dailyBookingsForSelectedRoomAndDate, // Destructure new prop
   onBookSlot,
-  onViewBooking, // Destructure new prop
+  onViewBooking,
 }) => {
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(initialDate);
-  const [roomBookings, setRoomBookings] = useState<Booking[]>([]);
+  // Use the prop directly instead of fetching
+  const roomBookings = dailyBookingsForSelectedRoomAndDate;
 
   // Generate dynamic time slots and hourly labels based on room's available time
   const dynamic30MinSlots = room ? generateDynamic30MinSlots(room) : [];
   const dynamicHourlyLabels = room ? generateDynamicHourlyLabels(room) : [];
 
+  // No need for useEffect to fetch bookings here anymore, as they are passed as prop
   useEffect(() => {
-    if (room && selectedDate) {
-      fetchRoomBookings(room.id, selectedDate);
-    }
-  }, [room, selectedDate]);
+    setSelectedDate(initialDate); // Ensure selectedDate updates if initialDate changes
+  }, [initialDate]);
 
-  const fetchRoomBookings = async (roomId: string, date: Date) => {
-    const formattedDate = format(date, "yyyy-MM-dd");
-    const { data, error } = await supabase
-      .from('bookings')
-      .select(`
-        *,
-        profiles (
-          name,
-          pin
-        )
-      `)
-      .eq('room_id', roomId)
-      .eq('date', formattedDate);
-
-    if (error) {
-      toast({
-        title: "Error fetching room bookings",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      const bookingsWithUserDetails = data.map(booking => ({
-        ...booking,
-        user_name: booking.profiles?.name,
-        user_pin: booking.profiles?.pin,
-      })) as Booking[];
-      setRoomBookings(bookingsWithUserDetails || []);
-    }
-  };
 
   const handleEmptySlotClick = (slotTime: string) => {
     if (!room || !selectedDate) return;
@@ -243,7 +215,7 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
           <div className="grid grid-cols-[60px_1fr] border border-gray-200 dark:border-gray-700 rounded-md relative">
             {/* Left Column: Time Labels (fixed height, aligns with hourly cells) */}
             <div className="flex flex-col">
-              {dynamicHourlyLabels.map((label, index) => (
+              {dynamicHourlyLabels.map((label, _index) => (
                 <div
                   key={`time-label-${label}`}
                   className="h-[60px] flex items-center justify-center text-xs font-medium text-gray-600 dark:text-gray-400 border-b border-r border-gray-200 dark:border-gray-700 last:border-b-0"

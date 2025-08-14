@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { UploadCloud, FileText, XCircle, CheckCircle2 } from "lucide-react";
+import { UploadCloud, FileText } from "lucide-react"; // Removed XCircle, CheckCircle2
 import { supabase } from "@/integrations/supabase/auth";
 import { useToast } from "@/components/ui/use-toast";
 import { parse } from 'csv-parse/browser/esm/sync'; // Corrected import path for browser ESM synchronous parser

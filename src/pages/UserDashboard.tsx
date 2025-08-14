@@ -1,14 +1,13 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { useSession } from "@/components/SessionProvider";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/auth";
 import { useNavigate } from "react-router-dom";
-import { Calendar as CalendarIcon, Share2, HelpCircle, User as UserIcon } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Share2, HelpCircle, User as UserIcon } from "lucide-react"; // Removed CalendarIcon
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"; // Removed Popover imports
 import { Calendar } from "@/components/ui/calendar";
-import { format, startOfWeek, addDays } from "date-fns";
+import { format, startOfWeek, addDays } from "date-fns"; // Removed parseISO
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import ProfileView from "@/components/ProfileView";
@@ -19,7 +18,7 @@ import RoomList from "@/components/RoomList";
 import DailyScheduleGrid from "@/components/DailyScheduleGrid";
 import WeeklyScheduleGrid from "@/components/WeeklyScheduleGrid";
 import WeeklyRoomDetailsDialog from "@/components/WeeklyRoomDetailsDialog";
-import { Room, Booking, UserPreference } from "@/types/database";
+import { Room, Booking } from "@/types/database"; // Removed UserPreference
 import BookingFormDialog from "@/components/BookingFormDialog";
 import BookingDetailsDialog from "@/components/BookingDetailsDialog";
 
@@ -43,8 +42,9 @@ const UserDashboard = () => {
   const [weeklyRoomDetailsOpen, setWeeklyRoomDetailsOpen] = useState(false);
   const [selectedRoomForWeeklyDetails, setSelectedRoomForWeeklyDetails] = useState<Room | null>(null);
   const [selectedDateForWeeklyDetails, setSelectedDateForWeeklyDetails] = useState<Date | undefined>(undefined);
-  const [newBookingStartTime, setNewBookingStartTime] = useState<string | undefined>(undefined); // New state
-  const [newBookingEndTime, setNewBookingEndTime] = useState<string | undefined>(undefined);     // New state
+  const [dailyBookingsForWeeklyDetails, setDailyBookingsForWeeklyDetails] = useState<Booking[]>([]); // New state for passing daily bookings
+  const [newBookingStartTime, setNewBookingStartTime] = useState<string | undefined>(undefined);
+  const [newBookingEndTime, setNewBookingEndTime] = useState<string | undefined>(undefined);
 
 
   useEffect(() => {
@@ -248,9 +248,10 @@ const UserDashboard = () => {
     setWeeklyRoomDetailsOpen(false); // Close weekly room details after success
   };
 
-  const handleViewRoomDetailsForWeekly = (room: Room, date: Date) => {
+  const handleViewRoomDetailsForWeekly = (room: Room, date: Date, dailyBookings: Booking[]) => {
     setSelectedRoomForWeeklyDetails(room);
     setSelectedDateForWeeklyDetails(date);
+    setDailyBookingsForWeeklyDetails(dailyBookings); // Set the filtered daily bookings
     setWeeklyRoomDetailsOpen(true);
   };
 
@@ -414,8 +415,9 @@ const UserDashboard = () => {
           onOpenChange={setWeeklyRoomDetailsOpen}
           room={selectedRoomForWeeklyDetails}
           initialDate={selectedDateForWeeklyDetails}
+          dailyBookingsForSelectedRoomAndDate={dailyBookingsForWeeklyDetails} // Pass the filtered bookings
           onBookSlot={handleBookSlot}
-          onViewBooking={handleViewBooking} // Pass onViewBooking to WeeklyRoomDetailsDialog
+          onViewBooking={handleViewBooking}
         />
       )}
 
