@@ -58,11 +58,6 @@ const formSchema = z.object({
   message: "End time must be after start time",
   path: ["endTime"],
 }).refine((data) => {
-  if (data.repeatType !== "no_repeat" && data.repeatType !== "custom" && !data.endDate) {
-    // For daily, weekly, monthly, if no custom end date, it should be optional.
-    // If custom, endDate is required.
-    return true; // Handled by the specific repeatType logic below
-  }
   if (data.repeatType === "custom" && !data.endDate) {
     return false;
   }
@@ -286,7 +281,7 @@ const BookingFormDialog: React.FC<BookingFormDialogProps> = ({
         variant: "destructive",
       });
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false); // Ensure submitting state is reset
     }
   };
 
