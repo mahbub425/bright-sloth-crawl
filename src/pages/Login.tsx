@@ -101,14 +101,14 @@ const Login = () => {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <Label htmlFor="pin">PIN</Label>
-            <Input id="pin" placeholder="Enter PIN" type="text" {...form.register("pin")} />
+            <Input id="pin" placeholder="Enter PIN" type="text" {...form.register("pin")} autoComplete="username" />
             {form.formState.errors.pin && (
               <p className="text-red-500 text-sm mt-1">{form.formState.errors.pin.message}</p>
             )}
           </div>
           <div>
             <Label htmlFor="password">Password</Label>
-            <Input id="password" placeholder="Enter Password" type="password" {...form.register("password")} />
+            <Input id="password" placeholder="Enter Password" type="password" {...form.register("password")} autoComplete="current-password" />
             {form.formState.errors.password && (
               <p className="text-red-500 text-sm mt-1">{form.formState.errors.password.message}</p>
             )}

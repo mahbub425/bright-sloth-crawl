@@ -89,14 +89,14 @@ const AdminLogin = () => {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <Label htmlFor="email">Email</Label>
-            <Input id="email" placeholder="admin@example.com" type="email" {...form.register("email")} />
+            <Input id="email" placeholder="admin@example.com" type="email" {...form.register("email")} autoComplete="username" />
             {form.formState.errors.email && (
               <p className="text-red-500 text-sm mt-1">{form.formState.errors.email.message}</p>
             )}
           </div>
           <div>
             <Label htmlFor="password">Password</Label>
-            <Input id="password" placeholder="********" type="password" {...form.register("password")} />
+            <Input id="password" placeholder="********" type="password" {...form.register("password")} autoComplete="current-password" />
             {form.formState.errors.password && (
               <p className="text-red-500 text-sm mt-1">{form.formState.errors.password.message}</p>
             )}
