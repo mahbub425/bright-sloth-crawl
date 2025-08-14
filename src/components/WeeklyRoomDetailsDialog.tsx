@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { format, parseISO, addMinutes, isBefore, isAfter, isSameDay, startOfWeek, addDays, differenceInMinutes } from "date-fns";
-import { Users, Info, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Room, Booking } from "@/types/database";
 import { supabase } from "@/integrations/supabase/auth";
 import { useToast } from "@/components/ui/use-toast";
@@ -41,8 +41,16 @@ const generateDynamicHourlyLabels = (room: Room) => {
 
   const startHour = parseInt(start.substring(0, 2));
   const endHour = parseInt(end.substring(0, 2));
+  const endMinute = parseInt(end.substring(3, 5));
 
-  for (let i = startHour; i <= endHour; i++) {
+  // The last hour label should correspond to the start of the last full hour available
+  // If end time is 17:00, last label is 4 PM. If end time is 17:30, last label is 5 PM.
+  let actualEndHourForLabels = endHour;
+  if (endMinute === 0 && endHour > startHour) { // If end is exactly on the hour, the label for that hour's start is not needed
+    actualEndHourForLabels = endHour - 1;
+  }
+
+  for (let i = startHour; i <= actualEndHourForLabels; i++) {
     labels.push(format(parseISO(`2000-01-01T${i.toString().padStart(2, '0')}:00:00`), "h a"));
   }
   return labels;
@@ -64,6 +72,7 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(initialDate);
   const [roomBookings, setRoomBookings] = useState<Booking[]>([]);
+  const [occupiedSlotMap, setOccupiedSlotMap] = useState<Map<string, Booking | null>>(new Map());
 
   // Generate dynamic time slots and hourly labels based on room's available time
   const dynamic30MinSlots = room ? generateDynamic30MinSlots(room) : [];
@@ -102,10 +111,30 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
         user_pin: booking.profiles?.pin,
       })) as Booking[];
       setRoomBookings(bookingsWithUserDetails || []);
+
+      // Populate the occupiedSlotMap
+      const newOccupiedMap = new Map<string, Booking | null>();
+      const allDay30MinSlotsForMapping = generateDynamic30MinSlots(room!); // Use room's actual available slots
+
+      allDay30MinSlotsForMapping.forEach(slotTime => {
+        const slotStart = parseISO(`2000-01-01T${slotTime}:00`);
+        const slotEnd = addMinutes(slotStart, 30);
+
+        // Find if any booking covers this 30-min slot
+        const coveringBooking = bookingsWithUserDetails.find(booking => {
+          const bookingStart = parseISO(`2000-01-01T${booking.start_time}`);
+          const bookingEnd = parseISO(`2000-01-01T${booking.end_time}`);
+          // A slot is covered if its start time is before the booking's end time,
+          // AND its end time is after the booking's start time.
+          return isBefore(slotStart, bookingEnd) && isAfter(slotEnd, bookingStart);
+        });
+        newOccupiedMap.set(slotTime, coveringBooking || null);
+      });
+      setOccupiedSlotMap(newOccupiedMap);
     }
   };
 
-  const handleEmptySlotClick = (slotTime: string) => {
+  const handleSlotClick = (slotTime: string) => {
     if (!room || !selectedDate) return;
 
     // Check if the clicked 30-min slot is within the room's available time
@@ -126,18 +155,22 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
     const potentialBookingStart = parseISO(`2000-01-01T${slotTime}:00`);
     const potentialBookingEnd = addMinutes(potentialBookingStart, 60); // Default to 1-hour slot for new booking
 
-    const hasConflict = roomBookings.some(booking => {
-      const existingBookingStart = parseISO(`2000-01-01T${booking.start_time}`);
-      const existingBookingEnd = parseISO(`2000-01-01T${booking.end_time}`);
-
-      // Check for overlap: (start1 < end2) && (end1 > start2)
-      return isBefore(potentialBookingStart, existingBookingEnd) && isAfter(potentialBookingEnd, existingBookingStart);
-    });
+    // Iterate through the 30-min slots that the potential new booking would cover
+    let currentCheckSlot = potentialBookingStart;
+    let hasConflict = false;
+    while (isBefore(currentCheckSlot, potentialBookingEnd)) {
+      const checkSlotTime = format(currentCheckSlot, "HH:mm");
+      if (occupiedSlotMap.has(checkSlotTime) && occupiedSlotMap.get(checkSlotTime) !== null) {
+        hasConflict = true;
+        break;
+      }
+      currentCheckSlot = addMinutes(currentCheckSlot, 30);
+    }
 
     if (hasConflict) {
       toast({
         title: "Booking Conflict",
-        description: "This time slot is already booked for this room.",
+        description: "The selected time slot overlaps with an existing booking in this room.",
         variant: "destructive",
       });
       return;
@@ -165,9 +198,6 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
   const startOfCurrentWeek = startOfWeek(selectedDate || new Date(), { weekStartsOn: 0 }); // Sunday as start of week
   const currentWeekDates = Array.from({ length: 7 }).map((_, i) => addDays(startOfCurrentWeek, i));
   const nextWeekDates = Array.from({ length: 7 }).map((_, i) => addDays(startOfCurrentWeek, 7 + i));
-
-  // Keep track of rendered booking IDs to avoid re-rendering for overlapping 30-min slots
-  const renderedBookingIds = new Set<string>();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -253,25 +283,21 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
             <div className="relative flex-1">
               {dynamic30MinSlots.map((slotTime, index) => {
                 const slotStart = parseISO(`2000-01-01T${slotTime}:00`);
+                const bookingInThisSlot = occupiedSlotMap.get(slotTime);
 
-                // Find a booking that starts exactly at this 30-min slot and hasn't been rendered yet
-                const bookingStartingHere = roomBookings.find(booking => {
+                // Determine if this is the *first* 30-min segment of a booking
+                const isBookingStartSegment = bookingInThisSlot && format(parseISO(`2000-01-01T${bookingInThisSlot.start_time}`), "HH:mm") === slotTime;
+
+                if (isBookingStartSegment) {
+                  const booking = bookingInThisSlot;
                   const bookingStart = parseISO(`2000-01-01T${booking.start_time}`);
-                  return bookingStart.getTime() === slotStart.getTime() && !renderedBookingIds.has(booking.id);
-                });
-
-                if (bookingStartingHere) {
-                  const bookingStart = parseISO(`2000-01-01T${bookingStartingHere.start_time}`);
-                  const bookingEnd = parseISO(`2000-01-01T${bookingStartingHere.end_time}`);
+                  const bookingEnd = parseISO(`2000-01-01T${booking.end_time}`);
                   const durationMinutes = differenceInMinutes(bookingEnd, bookingStart);
                   const heightPx = (durationMinutes / 30) * 60; // Each 30-min slot is 60px high
 
-                  // Mark this booking as rendered
-                  renderedBookingIds.add(bookingStartingHere.id);
-
                   return (
                     <div
-                      key={`booking-${bookingStartingHere.id}-${slotTime}`}
+                      key={`booking-${booking.id}-${slotTime}`}
                       className="absolute left-0 right-0 p-2 rounded-md text-white cursor-pointer transition-colors duration-200 overflow-hidden flex flex-col justify-center items-center"
                       style={{
                         backgroundColor: room.color || "#888",
@@ -279,46 +305,30 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
                         height: `${heightPx}px`,
                         zIndex: 10, // Ensure booking is above empty slots
                       }}
-                      onClick={() => handleBookingCardClick(bookingStartingHere)}
+                      onClick={() => handleBookingCardClick(booking)}
                     >
                       <span className="font-medium text-center leading-tight text-sm truncate w-full px-1">
-                        {bookingStartingHere.title}
+                        {booking.title}
                       </span>
                       <span className="text-xs text-center opacity-90 mt-1">
                         {format(bookingStart, "h:mma")} - {format(bookingEnd, "h:mma")}
                       </span>
                     </div>
                   );
+                } else if (bookingInThisSlot) {
+                  // This slot is covered by a booking that started earlier, so don't render anything here.
+                  return null;
                 } else {
-                  // Check if this 30-min slot is covered by an ongoing booking that started earlier
-                  const isCoveredByOngoingBooking = roomBookings.some(booking => {
-                    const bookingStart = parseISO(`2000-01-01T${booking.start_time}`);
-                    const bookingEnd = parseISO(`2000-01-01T${booking.end_time}`);
-                    return isBefore(bookingStart, slotStart) && isAfter(bookingEnd, slotStart);
-                  });
-
-                  if (isCoveredByOngoingBooking) {
-                    // This slot is part of an ongoing booking, so we don't render a separate cell for it.
-                    // Render a transparent div to maintain grid structure and prevent clicks.
-                    return (
-                      <div
-                        key={`covered-slot-${slotTime}`}
-                        className="h-[60px] absolute left-0 right-0 z-5"
-                        style={{ top: `${index * 60}px` }}
-                      ></div>
-                    );
-                  } else {
-                    // Empty slot
-                    return (
-                      <div
-                        key={`empty-slot-${slotTime}`}
-                        className="h-[60px] flex items-center justify-center p-1 border-b border-gray-200 dark:border-gray-700 last:border-b-0 bg-gray-50 dark:bg-gray-700/20 group hover:bg-gray-100 dark:hover:bg-gray-700/40 cursor-pointer"
-                        onClick={() => handleEmptySlotClick(slotTime)}
-                      >
-                        <Plus className="h-5 w-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                    );
-                  }
+                  // Empty slot
+                  return (
+                    <div
+                      key={`empty-slot-${slotTime}`}
+                      className="h-[60px] flex items-center justify-center p-1 border-b border-gray-200 dark:border-gray-700 last:border-b-0 bg-gray-50 dark:bg-gray-700/20 group hover:bg-gray-100 dark:hover:bg-gray-700/40 cursor-pointer"
+                      onClick={() => handleSlotClick(slotTime)}
+                    >
+                      <Plus className="h-5 w-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  );
                 }
               })}
             </div>
