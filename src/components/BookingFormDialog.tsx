@@ -168,15 +168,20 @@ const BookingFormDialog: React.FC<BookingFormDialogProps> = ({
     }
 
     try {
-      // Check for overlapping bookings
-      const { data: conflicts, error: conflictError } = await supabase
+      // Check for overlapping bookings using explicit time comparisons
+      let query = supabase
         .from('bookings')
         .select('id')
         .eq('room_id', room.id)
         .eq('date', formattedDate)
-        .overlaps('start_time', `[${values.startTime}, ${values.endTime})`) // Check for overlap
-        .overlaps('end_time', `(${values.startTime}, ${values.endTime}]`) // Check for overlap
-        .neq(existingBooking ? 'id' : 'dummy_id', existingBooking?.id || '00000000-0000-0000-0000-000000000000'); // Exclude current booking in edit mode
+        .filter('start_time', 'lt', values.endTime) // New booking starts before existing ends
+        .filter('end_time', 'gt', values.startTime); // New booking ends after existing starts
+
+      if (existingBooking) {
+        query = query.neq('id', existingBooking.id); // Exclude current booking in edit mode
+      }
+
+      const { data: conflicts, error: conflictError } = await query;
 
       if (conflictError) throw conflictError;
 
