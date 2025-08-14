@@ -247,7 +247,7 @@ const WeeklyRoomDetailsDialog: React.FC<WeeklyRoomDetailsDialogProps> = ({
               {dynamicHourlyLabels.map((label, index) => (
                 <div
                   key={`time-label-${label}`}
-                  className="h-[60px] flex items-start justify-center pt-1 text-xs font-medium text-gray-600 dark:text-gray-400 border-b border-r border-gray-200 dark:border-gray-700 last:border-b-0"
+                  className="h-[60px] flex items-center justify-center text-xs font-medium text-gray-600 dark:text-gray-400 border-b border-r border-gray-200 dark:border-gray-700 last:border-b-0"
                 >
                   {label}
                 </div>
